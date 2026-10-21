@@ -1,8 +1,11 @@
 #!/bin/bash
 # Applique la configuration système (services) et redémarre le bot.
 set -euo pipefail
-mkdir -p /var/lib/defi-bot/public
+mkdir -p /var/lib/defi-bot/public /etc/defi-bot
 chown -R defibot:defibot /var/lib/defi-bot
+touch /etc/defi-bot/secrets.env
+chown root:defibot /etc/defi-bot/secrets.env
+chmod 640 /etc/defi-bot/secrets.env
 
 cat > /etc/systemd/system/defi-bot.service <<'UNIT'
 [Unit]
@@ -11,6 +14,7 @@ After=network-online.target
 Wants=network-online.target
 [Service]
 User=defibot
+EnvironmentFile=-/etc/defi-bot/secrets.env
 ExecStart=/usr/bin/python3 /opt/defi-bot/bot/observer.py
 Restart=always
 RestartSec=15
