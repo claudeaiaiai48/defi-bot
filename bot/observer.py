@@ -117,6 +117,7 @@ def main():
     tracked = {}   # (chain, addr) -> {"first": ts, "sources": set}
     signaled = set()
     recent_signals = []
+    sec_log = {"acceptes": 0, "rejetes": 0, "raisons": {}, "derniers": []}
     started = now().isoformat(timespec="seconds")
     loops = 0
     log("defi-bot observation démarré")
@@ -167,6 +168,14 @@ def main():
                         strat = chain + ("-boost" if "boost" in row["sources"] else "-organique")
                         scfg = cfg.get("security", {})
                         sec = security.check(chain, addr, scfg) if scfg.get("enabled") else {"ok": True}
+                        sec_log["acceptes" if sec["ok"] else "rejetes"] += 1
+                        for r in sec.get("raisons", []):
+                            k = r.split(" =")[0].split(" (")[0]
+                            sec_log["raisons"][k] = sec_log["raisons"].get(k, 0) + 1
+                        sec_log["derniers"] = ([{"t": row["t"], "chain": chain, "symbol": row["symbol"],
+                                                 "ok": sec["ok"], "raisons": sec.get("raisons", []),
+                                                 "details": sec.get("details", {})}]
+                                               + sec_log["derniers"])[:30]
                         if sec["ok"]:
                             paper.signal(row, strat, events)
                         else:
@@ -190,6 +199,7 @@ def main():
             "signals_total": len(signaled), "config": cfg,
         })
         write_public("signals.json", recent_signals)
+        write_public("securite.json", sec_log)
         time.sleep(max(5, cfg["poll_seconds"] - (time.time() - t0)))
 
 
