@@ -189,6 +189,8 @@ def main():
                         paper.update(key, snaps_chain.get(a), events)
                     elif key in paper.state["pending"]:
                         paper.update_pending(key, snaps_chain.get(a), events)
+                    elif key in paper.state.get("suivi", {}):
+                        paper.update_suivi(key, snaps_chain.get(a), events)
             for addr, p in snaps_chain.items():
                 if (chain, addr) not in tracked:
                     continue
