@@ -4,7 +4,7 @@
     "solana",
     "base"
   ],
-  "poll_seconds": 60,
+  "poll_seconds": 30,
   "track_hours": 6,
   "signal": {
     "min_volume_h1_usd": 50000,
@@ -75,7 +75,7 @@
       ]
     ],
     "max_minutes_without_tp1": 90,
-    "missing_loops_dead": 10
+    "missing_loops_dead": 20
   },
   "security": {
     "enabled": true,
