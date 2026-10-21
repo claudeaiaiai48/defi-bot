@@ -72,6 +72,9 @@
     "cache_minutes": 10,
     "base_excluded_holders": [
       "0x498581ff718922c3f8e6a244956af099b2652b2b"
+    ],
+    "creator_sold_warning_chains": [
+      "solana"
     ]
   },
   "clanker": {
