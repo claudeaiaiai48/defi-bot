@@ -9,7 +9,7 @@ déclencher d'achat : les seuils seront calibrés sur les semaines d'observation
   détiennent ce token au moment du signal (1 crédit par wallet, cache 10 min).
 Les clés API viennent de /etc/defi-bot/secrets.env (jamais du dépôt).
 """
-import json, os, time, urllib.parse, urllib.request
+import json, os, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timezone, timedelta
 
 UA = {"User-Agent": "defi-bot-observer/1.0", "Accept": "application/json"}
@@ -29,8 +29,11 @@ def _shape(v):
 
 
 def keys_present():
-    return {k: _shape(os.environ.get(k)) for k in
-            ("NEYNAR_API_KEY", "HELIUS_API_KEY", "REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET")}
+    out = {k: _shape(os.environ.get(k)) for k in
+           ("NEYNAR_API_KEY", "HELIUS_API_KEY", "REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET")}
+    n, h = os.environ.get("NEYNAR_API_KEY"), os.environ.get("HELIUS_API_KEY")
+    out["neynar_identique_a_helius"] = bool(n and h and n == h)
+    return out
 
 
 def _get(url, headers=None):
@@ -97,8 +100,16 @@ def _holds(wallet, mint, key):
                        "params": [wallet, {"mint": mint}, {"encoding": "jsonParsed"}]}).encode()
     req = urllib.request.Request(f"https://mainnet.helius-rpc.com/?api-key={urllib.parse.quote(key)}",
                                  data=body, headers={**UA, "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=20) as r:
-        res = json.loads(r.read().decode("utf-8"))
+    for essai in range(4):
+        time.sleep(0.15)          # forfait gratuit Helius : ~10 requêtes/s
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                res = json.loads(r.read().decode("utf-8"))
+            break
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or essai == 3:
+                raise
+            time.sleep(1.5 * (essai + 1))
     if "error" in res:
         raise RuntimeError(str(res["error"])[:100])
     held = any(float((((a.get("account") or {}).get("data") or {}).get("parsed") or {})
