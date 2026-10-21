@@ -225,6 +225,7 @@ def main():
                         if transient:
                             signaled.discard((chain, addr))   # on réessaiera (cache de 10 min)
                         if sec["ok"]:
+                            row["securite"] = sec.get("details")      # gardé avec le trade
                             if (sec.get("details") or {}).get("avertissement"):
                                 strat += "-createurvendu"   # pour comparer avec / sans créateur
                             paper.signal(row, strat, events)
