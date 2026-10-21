@@ -170,13 +170,21 @@ class Paper:
         c, st = self.cfg, self.state
         if st["halted"]:
             return "arrêt -30 %"
-        if len(st["open"]) >= c["max_open"]:
-            return "3 positions ouvertes"
+        limit = c.get("max_open_per_chain", c.get("max_open"))
+        if sum(1 for p in st["open"].values() if p["chain"] == chain) >= limit:
+            return f"{limit} positions ouvertes sur {chain}"
         if st["trades_per_day"].get(today(), 0) >= c["max_trades_per_day"]:
             return "10 trades aujourd'hui"
-        if st["cash"][chain] < c["position_usd"]:
+        if st["cash"][chain] < self.position_size(chain):
             return f"réserve {chain} insuffisante"
         return None
+
+    def position_size(self, chain):
+        """Mise = position_pct % du capital actuel de la chaîne (cash + positions), sinon montant fixe."""
+        pct = self.cfg.get("position_pct")
+        if pct:
+            return round(self.equity(chain) * pct / 100, 2)
+        return self.cfg["position_usd"]
 
     def update_pending(self, key, pair, events):
         c, st = self.cfg, self.state
@@ -207,8 +215,8 @@ class Paper:
 
     def _buy(self, key, p, price, pair, events):
         c, st = self.cfg, self.state
-        size = c["position_usd"]
         chain = p["row"]["chain"]
+        size = self.position_size(chain)
         qty = size * (1 - self.fee(chain)) / price
         st["cash"][chain] -= size
         st["entered"].append(key)
