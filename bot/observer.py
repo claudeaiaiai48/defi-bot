@@ -218,6 +218,8 @@ def main():
                         if transient:
                             signaled.discard((chain, addr))   # on réessaiera (cache de 10 min)
                         if sec["ok"]:
+                            if (sec.get("details") or {}).get("avertissement"):
+                                strat += "-createurvendu"   # pour comparer avec / sans créateur
                             paper.signal(row, strat, events)
                         else:
                             events.append({"type": "rejet sécurité", "key": f"{chain}:{addr}",
