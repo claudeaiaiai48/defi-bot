@@ -6,7 +6,7 @@ déclencher d'achat : les seuils seront calibrés sur les semaines d'observation
 - Farcaster (Neynar) : mentions du token ($SYMBOLE ou adresse) sur 1 h et 15 min,
   auteurs distincts, plus gros compte (abonnés), engagement.
 - Smart money (Helius, Solana) : quels wallets de la liste config["smart_money"]
-  ont acheté ce token récemment.
+  détiennent ce token au moment du signal (1 crédit par wallet, cache 10 min).
 Les clés API viennent de /etc/defi-bot/secrets.env (jamais du dépôt).
 """
 import json, os, time, urllib.parse, urllib.request
@@ -77,43 +77,46 @@ def farcaster(symbol, token):
 
 
 # ---------- Smart money (Solana) ----------
-def _wallet_swaps(wallet, key):
-    hit = _wallet_cache.get(wallet)
-    if hit and time.time() - hit[0] < 120:
+def _holds(wallet, mint, key):
+    """1 crédit Helius : le wallet détient-il ce token ?"""
+    hit = _wallet_cache.get((wallet, mint))
+    if hit and time.time() - hit[0] < 600:
         return hit[1]
-    url = (f"https://api.helius.xyz/v0/addresses/{wallet}/transactions?"
-           + urllib.parse.urlencode({"api-key": key, "type": "SWAP", "limit": 50}))
-    swaps = _get(url)
-    _wallet_cache[wallet] = (time.time(), swaps)
-    return swaps
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getTokenAccountsByOwner",
+                       "params": [wallet, {"mint": mint}, {"encoding": "jsonParsed"}]}).encode()
+    req = urllib.request.Request(f"https://mainnet.helius-rpc.com/?api-key={urllib.parse.quote(key)}",
+                                 data=body, headers={**UA, "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        res = json.loads(r.read().decode("utf-8"))
+    if "error" in res:
+        raise RuntimeError(str(res["error"])[:100])
+    held = any(float((((a.get("account") or {}).get("data") or {}).get("parsed") or {})
+                     .get("info", {}).get("tokenAmount", {}).get("uiAmount") or 0) > 0
+               for a in (res.get("result") or {}).get("value") or [])
+    _wallet_cache[(wallet, mint)] = (time.time(), held)
+    return held
 
 
-def smart_money(token, wallets, hours=6):
+def smart_money(token, wallets):
     key = os.environ.get("HELIUS_API_KEY")
     if not key:
         STATUS["helius"] = "clé absente"
         return None
     if not wallets:
         STATUS["helius"] = "ok (liste de wallets vide)"
-        return {"acheteurs": [], "liste_vide": True}
-    buyers = []
+        return {"detenteurs": [], "liste_vide": True}
+    holders = []
     try:
         for w in wallets:
             addr = w["address"] if isinstance(w, dict) else w
-            for tx in _wallet_swaps(addr, key) or []:
-                if time.time() - (tx.get("timestamp") or 0) > hours * 3600:
-                    continue
-                if any(t.get("mint") == token and t.get("toUserAccount") == addr
-                       for t in tx.get("tokenTransfers") or []):
-                    buyers.append({"wallet": addr[:6] + "…",
-                                   "nom": w.get("name") if isinstance(w, dict) else None,
-                                   "t": tx.get("timestamp")})
-                    break
+            if _holds(addr, token, key):
+                holders.append({"wallet": addr[:6] + "…",
+                                "source": w.get("source") if isinstance(w, dict) else None})
         STATUS["helius"] = "ok"
     except Exception as e:
         STATUS["helius"] = _err(e)
         return None
-    return {"acheteurs": buyers, "liste_vide": False}
+    return {"detenteurs": holders, "nb": len(holders), "suivis": len(wallets)}
 
 
 _selftest_done = {}
