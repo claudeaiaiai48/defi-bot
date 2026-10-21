@@ -34,6 +34,99 @@ class Paper:
                           "entered": [], "trades_per_day": {}, "halted": False,
                           "started": time.time()}
 
+        self.state.setdefault("suivi", {})
+        for t in self.state["closed"][-30:]:      # rattrape les sorties récentes d'avant la fonction
+            self._start_suivi(f"{t['chain']}:{t['token']}", t, late=True)
+
+    # ---------- suivi après sortie (la sortie était-elle une bonne décision ?) ----------
+    def _suivi_cfg(self):
+        c = self.cfg.get("post_exit_track", {})
+        return c.get("reasons", ["temps"]), c.get("minutes", 240)
+
+    def _start_suivi(self, key, trade, late=False):
+        reasons, minutes = self._suivi_cfg()
+        st = self.state.setdefault("suivi", {})
+        if trade.get("close_reason") not in reasons or key in st:
+            return
+        if any(g.get("close_t") == trade.get("close_t") for g in st.values()):
+            return
+        if late and time.time() - trade["close_t"] > minutes * 60:
+            return                                  # trop ancien : pas d'historique de prix
+        exit_price = (trade.get("exits") or [{}])[-1].get("price")
+        if not exit_price:
+            return
+        st[key] = {"chain": trade["chain"], "token": trade["token"], "symbol": trade["symbol"],
+                   "strategy": trade["strategy"], "url": trade.get("url"),
+                   "entry_price": trade["entry_price"], "exit_price": exit_price,
+                   "close_t": trade["close_t"], "pnl_pct": trade["pnl_pct"],
+                   "last": exit_price, "max": exit_price, "min": exit_price,
+                   "marks": {}, "first": None, "missing": 0, "done": False,
+                   "partiel": late, "verdict": None}
+
+    def update_suivi(self, key, pair, events):
+        c, g = self.cfg, self.state["suivi"][key]
+        _, minutes = self._suivi_cfg()
+        if g["done"]:
+            return
+        price = float((pair or {}).get("priceUsd") or 0)
+        if pair is None:
+            g["missing"] += 1
+            if g["missing"] >= c["missing_loops_dead"]:
+                price = 1e-30                       # token disparu : valeur nulle
+            else:
+                return
+        elif price <= 0:
+            return
+        else:
+            g["missing"] = 0
+        g["last"] = price
+        g["max"], g["min"] = max(g["max"], price), min(g["min"], price)
+        if g["first"] is None:
+            if price >= g["entry_price"] * (1 + c["tp1_pct"] / 100):
+                g["first"] = "tp1"
+            elif price <= g["entry_price"] * (1 + c["stop_initial_pct"] / 100):
+                g["first"] = "stop"
+        elapsed = (time.time() - g["close_t"]) / 60
+        for m in (30, 60, 120, 240):
+            if m <= minutes and elapsed >= m and str(m) not in g["marks"]:
+                g["marks"][str(m)] = round((price / g["exit_price"] - 1) * 100, 1)
+        if elapsed >= minutes or g["missing"] >= c["missing_loops_dead"]:
+            g["done"] = True
+            evol = (price / g["exit_price"] - 1) * 100
+            if g["first"] == "tp1":
+                g["verdict"] = "mauvaise sortie"
+            elif g["first"] == "stop" or evol <= -10:
+                g["verdict"] = "bonne sortie"
+            elif evol >= 10:
+                g["verdict"] = "mauvaise sortie"
+            else:
+                g["verdict"] = "neutre"
+            events.append({"type": "suivi terminé", "key": key, "symbol": g["symbol"],
+                           "verdict": g["verdict"], "evolution_pct": round(evol, 1)})
+
+    def suivi_summary(self):
+        gs = list(self.state.get("suivi", {}).values())
+        fin = [g for g in gs if g["done"]]
+        n = lambda v: sum(1 for g in fin if g["verdict"] == v)
+        _, minutes = self._suivi_cfg()
+        return {
+            "raisons_suivies": self._suivi_cfg()[0], "duree_suivi_min": minutes,
+            "en_cours": len(gs) - len(fin), "termines": len(fin),
+            "bonnes_sorties": n("bonne sortie"), "mauvaises_sorties": n("mauvaise sortie"),
+            "neutres": n("neutre"),
+            "part_bonnes_pct": round(100 * n("bonne sortie") / len(fin), 1) if fin else None,
+            "detail": [{"symbol": g["symbol"], "chain": g["chain"], "pnl_trade_pct": g["pnl_pct"],
+                        "prix_sortie": g["exit_price"], "prix_actuel": g["last"],
+                        "evolution_depuis_sortie_pct": {**g["marks"],
+                                                        "actuelle": round((g["last"] / g["exit_price"] - 1) * 100, 1)},
+                        "max_depuis_sortie_pct": round((g["max"] / g["exit_price"] - 1) * 100, 1),
+                        "min_depuis_sortie_pct": round((g["min"] / g["exit_price"] - 1) * 100, 1),
+                        "premier_evenement": g["first"] or "aucun (+30 % / -20 % vs entrée)",
+                        "etat": "terminé" if g["done"] else "en cours",
+                        "verdict": g["verdict"], "suivi_partiel": g["partiel"], "url": g["url"]}
+                       for g in gs[-30:][::-1]],
+        }
+
     # ---------- utilitaires ----------
     def save(self):
         tmp = self.path + ".tmp"
@@ -48,7 +141,8 @@ class Paper:
         return sum(self.cfg["reserves"].values())
 
     def watched_keys(self):
-        keys = list(self.state["open"]) + list(self.state["pending"])
+        keys = (list(self.state["open"]) + list(self.state["pending"])
+                + list(self.state.setdefault("suivi", {})))
         return [tuple(k.split(":", 1)) for k in keys]
 
     def equity(self, chain=None):
@@ -158,6 +252,7 @@ class Paper:
                       "proceeds_usd": round(pos["proceeds_usd"], 2), "pnl_usd": round(pnl, 2),
                       "pnl_pct": round(100 * pnl / pos["cost_usd"], 1)})
         self.state["closed"].append(trade)
+        self._start_suivi(key, trade)
         events.append({"type": "clôture", "key": key, "symbol": pos["symbol"],
                        "pnl_usd": trade["pnl_usd"], "pnl_pct": trade["pnl_pct"], "reason": reason})
 
@@ -250,5 +345,6 @@ class Paper:
             "trades_clos": len(st["closed"]), "par_strategie": by,
             "derniers_trades": st["closed"][-20:][::-1],
             "signaux_sans_repli": len(st["missed"]),
+            "sorties_temps_suivies": self.suivi_summary(),
             "regles": {k: c[k] for k in c if k != "enabled"},
         }
