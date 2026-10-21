@@ -30,7 +30,8 @@ def _shape(v):
 
 def keys_present():
     out = {k: _shape(os.environ.get(k)) for k in
-           ("NEYNAR_API_KEY", "HELIUS_API_KEY", "REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET")}
+           ("NEYNAR_API_KEY", "HELIUS_API_KEY", "REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET",
+            "TELEGRAM_API_ID", "TELEGRAM_API_HASH")}
     n, h = os.environ.get("NEYNAR_API_KEY"), os.environ.get("HELIUS_API_KEY")
     out["neynar_identique_a_helius"] = bool(n and h and n == h)
     return out
@@ -176,6 +177,13 @@ def enrich(chain, row, cfg):
     out = {}
     if s.get("farcaster"):
         out["farcaster"] = farcaster(row.get("symbol"), row.get("token"))
+    if s.get("telegram"):
+        try:
+            import tgwatch
+            out["telegram"] = tgwatch.mentions(row.get("symbol"), row.get("token"))
+            STATUS["telegram"] = tgwatch.STATE["etat"]
+        except Exception as e:
+            STATUS["telegram"] = _err(e)
     if chain == "solana" and s.get("smart_money"):
         out["smart_money"] = smart_money(row.get("token"), cfg.get("smart_money", []))
     return out
