@@ -9,7 +9,8 @@ réglées dans config.json :
   sortie forcée si +30 % n'est pas atteint dans le délai ;
 - moonbag 10 % (seulement après +80 %), sans stop ni limite de temps :
   50 % à x5, 25 % à x20, 25 % à x100 ; moonbag morte abandonnée, jamais revendue ;
-- risque : 3 positions max, 10 trades par jour max, arrêt des entrées à -30 % du capital.
+- capital : deux réserves séparées (Solana, Base), frais propres à chaque chaîne ;
+- risque : 3 positions max, 10 trades par jour max, arrêt des entrées à -30 % du capital total.
 """
 import json, os, time
 from datetime import datetime, timezone
@@ -28,7 +29,7 @@ class Paper:
             with open(self.path, encoding="utf-8") as f:
                 self.state = json.load(f)
         if not self.state or self.state.get("reset_id") != cfg.get("reset_id"):
-            self.state = {"reset_id": cfg.get("reset_id"), "cash": cfg["capital_usd"],
+            self.state = {"reset_id": cfg.get("reset_id"), "cash": dict(cfg["reserves"]),
                           "open": {}, "closed": [], "pending": {}, "missed": [],
                           "entered": [], "trades_per_day": {}, "halted": False,
                           "started": time.time()}
@@ -40,16 +41,21 @@ class Paper:
             json.dump(self.state, f)
         os.replace(tmp, self.path)
 
-    def fee(self):
-        return (self.cfg["fee_pct"] + self.cfg["slippage_pct"]) / 100
+    def fee(self, chain):
+        return (self.cfg["fee_pct"][chain] + self.cfg["slippage_pct"]) / 100
+
+    def capital(self):
+        return sum(self.cfg["reserves"].values())
 
     def watched_keys(self):
         keys = list(self.state["open"]) + list(self.state["pending"])
         return [tuple(k.split(":", 1)) for k in keys]
 
-    def equity(self):
-        return self.state["cash"] + sum(p["qty"] * p["last_price"] * (1 - self.fee())
-                                        for p in self.state["open"].values())
+    def equity(self, chain=None):
+        cash = self.state["cash"]
+        value = sum(p["qty"] * p["last_price"] * (1 - self.fee(p["chain"]))
+                    for p in self.state["open"].values() if chain in (None, p["chain"]))
+        return (sum(cash.values()) if chain is None else cash[chain]) + value
 
     # ---------- signaux et entrées ----------
     def signal(self, row, strategy, events):
@@ -66,7 +72,7 @@ class Paper:
         events.append({"type": "attente", "key": key, "symbol": row["symbol"],
                        "strategy": strategy, "price": price})
 
-    def _can_enter(self):
+    def _can_enter(self, chain):
         c, st = self.cfg, self.state
         if st["halted"]:
             return "arrêt -30 %"
@@ -74,8 +80,8 @@ class Paper:
             return "3 positions ouvertes"
         if st["trades_per_day"].get(today(), 0) >= c["max_trades_per_day"]:
             return "10 trades aujourd'hui"
-        if st["cash"] < c["position_usd"]:
-            return "capital insuffisant"
+        if st["cash"][chain] < c["position_usd"]:
+            return f"réserve {chain} insuffisante"
         return None
 
     def update_pending(self, key, pair, events):
@@ -89,7 +95,7 @@ class Paper:
             drop = round((1 - price / p["high"]) * 100, 6)
             if (c["pullback_min_pct"] <= drop <= c["pullback_max_pct"]
                     and candle <= c["green_candle_max_pct"]):
-                blocked = self._can_enter()
+                blocked = self._can_enter(p["row"]["chain"])
                 if blocked:
                     st["pending"].pop(key)
                     events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
@@ -108,8 +114,9 @@ class Paper:
     def _buy(self, key, p, price, pair, events):
         c, st = self.cfg, self.state
         size = c["position_usd"]
-        qty = size * (1 - self.fee()) / price
-        st["cash"] -= size
+        chain = p["row"]["chain"]
+        qty = size * (1 - self.fee(chain)) / price
+        st["cash"][chain] -= size
         st["entered"].append(key)
         st["trades_per_day"][today()] = st["trades_per_day"].get(today(), 0) + 1
         row = p["row"]
@@ -132,11 +139,11 @@ class Paper:
         if qty is None:
             qty = pos["qty"] if all_ else pos["qty0"] * frac_of_initial
         qty = min(pos["qty"], qty)
-        usd = qty * price * (1 - self.fee()) if price > 0 else 0.0
+        usd = qty * price * (1 - self.fee(pos["chain"])) if price > 0 else 0.0
         pos["qty"] -= qty
         pos["proceeds_usd"] += usd
         pos["sells"] += 1
-        self.state["cash"] += usd
+        self.state["cash"][pos["chain"]] += usd
         pos["exits"].append({"t": time.time(), "price": price, "usd": round(usd, 2), "reason": reason})
         events.append({"type": "vente", "key": key, "symbol": pos["symbol"], "price": price,
                        "usd": round(usd, 2), "reason": reason})
@@ -207,7 +214,7 @@ class Paper:
 
     def risk_check(self, events):
         c, st = self.cfg, self.state
-        if not st["halted"] and self.equity() <= c["capital_usd"] * (1 - c["kill_switch_drawdown_pct"] / 100):
+        if not st["halted"] and self.equity() <= self.capital() * (1 - c["kill_switch_drawdown_pct"] / 100):
             st["halted"] = True
             events.append({"type": "arrêt", "reason": f"capital -{c['kill_switch_drawdown_pct']} %"})
 
@@ -216,6 +223,10 @@ class Paper:
         st, c = self.state, self.cfg
         equity = self.equity()
         by = {}
+        chains = {ch: {"reserve_depart": r, "valeur": round(self.equity(ch), 2),
+                       "pnl_pct": round(100 * (self.equity(ch) / r - 1), 2),
+                       "cash": round(st["cash"][ch], 2)}
+                  for ch, r in c["reserves"].items()}
         for t in st["closed"]:
             s = by.setdefault(t["strategy"], {"trades": 0, "gagnants": 0, "pnl_usd": 0.0})
             s["trades"] += 1
@@ -224,13 +235,13 @@ class Paper:
         for s in by.values():
             s["taux_reussite_pct"] = round(100 * s["gagnants"] / s["trades"], 1)
         return {
-            "capital_depart": c["capital_usd"], "valeur": round(equity, 2),
-            "pnl_total_pct": round(100 * (equity / c["capital_usd"] - 1), 2),
-            "cash": round(st["cash"], 2), "arret_risque": st["halted"],
+            "capital_depart": self.capital(), "valeur": round(equity, 2),
+            "pnl_total_pct": round(100 * (equity / self.capital() - 1), 2),
+            "par_chaine": chains, "arret_risque": st["halted"],
             "trades_aujourdhui": st["trades_per_day"].get(today(), 0),
-            "en_attente_de_repli": [{"symbol": p["row"]["symbol"], "plus_haut": p["high"],
+            "en_attente_de_repli": [{"symbol": p["row"]["symbol"], "chain": p["row"]["chain"], "plus_haut": p["high"],
                                      "dernier": p["last"]} for p in st["pending"].values()],
-            "positions_ouvertes": [{"symbol": p["symbol"], "strategy": p["strategy"],
+            "positions_ouvertes": [{"symbol": p["symbol"], "chain": p["chain"], "strategy": p["strategy"],
                                     "entree": p["entry_price"], "actuel": p["last_price"],
                                     "gain_pct": round((p["last_price"] / p["entry_price"] - 1) * 100, 1),
                                     "tp1": p["tp1"], "tp2": p["tp2"], "url": p["url"]}
