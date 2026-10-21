@@ -28,6 +28,16 @@ def _get(url, headers=None):
         return json.loads(r.read().decode("utf-8"))
 
 
+def _err(e):
+    code = getattr(e, "code", None)
+    body = ""
+    try:
+        body = e.read().decode("utf-8", "replace")[:160] if hasattr(e, "read") else ""
+    except Exception:
+        pass
+    return f"erreur {code or type(e).__name__} {body}".strip()
+
+
 def _ts(s):
     try:
         return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
@@ -52,7 +62,7 @@ def farcaster(symbol, token):
         casts = (_get(url, {"x-api-key": key}).get("result") or {}).get("casts") or []
         STATUS["neynar"] = "ok"
     except Exception as e:
-        STATUS["neynar"] = f"erreur {type(e).__name__}"
+        STATUS["neynar"] = _err(e)
         return None
     now = time.time()
     recent = [c for c in casts if now - _ts(c.get("timestamp", "")) <= 3600]
@@ -101,7 +111,7 @@ def smart_money(token, wallets, hours=6):
                     break
         STATUS["helius"] = "ok"
     except Exception as e:
-        STATUS["helius"] = f"erreur {type(e).__name__}"
+        STATUS["helius"] = _err(e)
         return None
     return {"acheteurs": buyers, "liste_vide": False}
 
