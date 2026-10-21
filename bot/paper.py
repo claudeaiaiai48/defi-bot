@@ -173,8 +173,9 @@ class Paper:
         limit = c.get("max_open_per_chain", c.get("max_open"))
         if sum(1 for p in st["open"].values() if p["chain"] == chain) >= limit:
             return f"{limit} positions ouvertes sur {chain}"
-        if st["trades_per_day"].get(today(), 0) >= c["max_trades_per_day"]:
-            return "10 trades aujourd'hui"
+        daily = c.get("max_trades_per_day")          # None / 0 = pas de limite journalière
+        if daily and st["trades_per_day"].get(today(), 0) >= daily:
+            return f"{daily} trades aujourd'hui"
         if st["cash"][chain] < self.position_size(chain):
             return f"réserve {chain} insuffisante"
         return None
