@@ -77,7 +77,10 @@ def _solana(token, cfg):
     # 3. créateur pas tout vendu
     det["createur_detient"] = float(d.get("creatorBalance") or 0) > 0
     if cfg["require_creator_holding"] and not det["createur_detient"]:
-        reasons.append("le créateur a tout vendu")
+        if "solana" in cfg.get("creator_sold_warning_chains", []):
+            det["avertissement"] = "le créateur a tout vendu"   # enregistré, ne bloque pas
+        else:
+            reasons.append("le créateur a tout vendu")
 
     # 4. lancement bundlé : part détenue par les réseaux d'initiés
     insiders = sum(float(n.get("currentHolding") or 0) for n in d.get("insiderNetworks") or [])
