@@ -60,6 +60,19 @@ def discover(chains):
     return found
 
 
+def discover_clanker():
+    """Derniers lancements Clanker sur Base (flux public clanker.world)."""
+    try:
+        req = urllib.request.Request("https://www.clanker.world/api/tokens?sort=desc", headers=UA)
+        with urllib.request.urlopen(req, timeout=20) as r:
+            data = json.loads(r.read().decode("utf-8")).get("data") or []
+        return [t["contract_address"] for t in data
+                if t.get("chain_id") == 8453 and t.get("contract_address")]
+    except Exception as e:
+        log(f"clanker: {e}")
+        return []
+
+
 def best_pair(pairs):
     pairs = [p for p in pairs or [] if p.get("liquidity", {}).get("usd")]
     return max(pairs, key=lambda p: p["liquidity"]["usd"]) if pairs else None
@@ -114,6 +127,10 @@ def log(msg):
 
 def main():
     os.makedirs(PUBLIC, exist_ok=True)
+    cl_path = os.path.join(DATA, "clanker.json")
+    if os.path.exists(cl_path):
+        with open(cl_path, encoding="utf-8") as f:
+            security.CLANKER.update(json.load(f))
     tracked = {}   # (chain, addr) -> {"first": ts, "sources": set}
     signaled = set()
     recent_signals = []
@@ -132,7 +149,16 @@ def main():
         if paper:
             paper.cfg = pcfg
         events = []
-        for key, src in discover(cfg["chains"]).items():
+        found = discover(cfg["chains"])
+        if "base" in cfg["chains"] and cfg.get("clanker", {}).get("enabled"):
+            new = [a for a in discover_clanker() if a.lower() not in security.CLANKER]
+            for a in new:
+                security.CLANKER.add(a.lower())
+                found.setdefault(("base", a), set()).add("clanker")
+            if new:
+                with open(cl_path, "w", encoding="utf-8") as f:
+                    json.dump(sorted(security.CLANKER)[-20000:], f)
+        for key, src in found.items():
             entry = tracked.setdefault(key, {"first": t0, "sources": set()})
             entry["sources"] |= src
         horizon = cfg["track_hours"] * 3600
@@ -165,7 +191,8 @@ def main():
                     recent_signals = ([row] + recent_signals)[:50]
                     log(f"SIGNAL {chain} {row['symbol']} vol1h={row['vol'].get('h1')} liq={row['liq_usd']}")
                     if paper and chain in paper.cfg["chains"]:
-                        strat = chain + ("-boost" if "boost" in row["sources"] else "-organique")
+                        strat = chain + ("-boost" if "boost" in row["sources"] else
+                                         "-clanker" if addr.lower() in security.CLANKER else "-organique")
                         scfg = cfg.get("security", {})
                         sec = security.check(chain, addr, scfg) if scfg.get("enabled") else {"ok": True}
                         sec_log["acceptes" if sec["ok"] else "rejetes"] += 1
@@ -176,6 +203,11 @@ def main():
                                                  "ok": sec["ok"], "raisons": sec.get("raisons", []),
                                                  "details": sec.get("details", {})}]
                                                + sec_log["derniers"])[:30]
+                        transient = sec.get("raisons") and all(
+                            r.startswith(("détenteurs pas encore indexés", "vérification impossible",
+                                          "GoPlus sans données")) for r in sec["raisons"])
+                        if transient:
+                            signaled.discard((chain, addr))   # on réessaiera (cache de 10 min)
                         if sec["ok"]:
                             paper.signal(row, strat, events)
                         else:
