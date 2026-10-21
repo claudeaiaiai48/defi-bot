@@ -29,7 +29,7 @@
     "position_pct": 20,
     "position_usd": 30,
     "max_open_per_chain": 3,
-    "max_trades_per_day": 10,
+    "max_trades_per_day": null,
     "kill_switch_drawdown_pct": 30,
     "fee_pct": {
       "solana": 1.75,
