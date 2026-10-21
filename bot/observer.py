@@ -140,12 +140,17 @@ def main():
         for chain in cfg["chains"]:
             addrs = [a for (c, a) in tracked if c == chain]
             if paper:
-                addrs += [a for (c, a) in paper.open_keys() if c == chain and a not in addrs]
+                addrs += [a for (c, a) in paper.watched_keys() if c == chain and a not in addrs]
             snaps_chain = snapshot(chain, addrs)
             if paper:
-                for (c, a) in paper.open_keys():
-                    if c == chain:
-                        paper.update(f"{c}:{a}", snaps_chain.get(a), events)
+                for (c, a) in paper.watched_keys():
+                    if c != chain:
+                        continue
+                    key = f"{c}:{a}"
+                    if key in paper.state["open"]:
+                        paper.update(key, snaps_chain.get(a), events)
+                    elif key in paper.state["pending"]:
+                        paper.update_pending(key, snaps_chain.get(a), events)
             for addr, p in snaps_chain.items():
                 if (chain, addr) not in tracked:
                     continue
@@ -159,7 +164,9 @@ def main():
                     log(f"SIGNAL {chain} {row['symbol']} vol1h={row['vol'].get('h1')} liq={row['liq_usd']}")
                     if paper:
                         strat = chain + ("-boost" if "boost" in row["sources"] else "-organique")
-                        paper.enter(row, strat, events)
+                        paper.signal(row, strat, events)
+        if paper:
+            paper.risk_check(events)
         for ev in events:
             ev["t"] = now().isoformat(timespec="seconds")
             append("paper", ev)
