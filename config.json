@@ -17,16 +17,23 @@
   },
   "paper": {
     "enabled": true,
-    "reset_id": "strategie-v1-2026-10-21",
+    "reset_id": "strategie-v1-2chaines-2026-10-21",
     "chains": [
-      "solana"
+      "solana",
+      "base"
     ],
-    "capital_usd": 150,
+    "reserves": {
+      "solana": 150,
+      "base": 150
+    },
     "position_usd": 30,
     "max_open": 3,
     "max_trades_per_day": 10,
     "kill_switch_drawdown_pct": 30,
-    "fee_pct": 1.75,
+    "fee_pct": {
+      "solana": 1.75,
+      "base": 1.0
+    },
     "slippage_pct": 0.5,
     "pullback_min_pct": 10,
     "pullback_max_pct": 15,
@@ -55,5 +62,13 @@
     ],
     "max_minutes_without_tp1": 90,
     "missing_loops_dead": 10
+  },
+  "security": {
+    "enabled": true,
+    "max_top10_pct": 30,
+    "max_tax_pct": 1,
+    "require_creator_holding": true,
+    "max_insiders_pct": 15,
+    "cache_minutes": 10
   }
 }
