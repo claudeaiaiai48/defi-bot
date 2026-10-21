@@ -82,6 +82,7 @@
   },
   "social": {
     "farcaster": true,
+    "telegram": true,
     "smart_money": true
   },
   "smart_money": [
