@@ -176,16 +176,20 @@ class Paper:
         daily = c.get("max_trades_per_day")          # None / 0 = pas de limite journalière
         if daily and st["trades_per_day"].get(today(), 0) >= daily:
             return f"{daily} trades aujourd'hui"
-        if st["cash"][chain] < self.position_size(chain):
-            return f"réserve {chain} insuffisante"
+        if self.position_size(chain) < c.get("position_min_usd", 0):
+            return f"réserve {chain} insuffisante (gas {self.gas(chain)} $ gardé)"
         return None
 
+    def gas(self, chain):
+        return (self.cfg.get("gas_reserve_usd") or {}).get(chain, 0)
+
     def position_size(self, chain):
-        """Mise = position_pct % du capital actuel de la chaîne (cash + positions), sinon montant fixe."""
+        """Mise = position_pct % du capital de la chaîne (cash + positions), plafonnée au cash disponible moins le gas."""
         pct = self.cfg.get("position_pct")
-        if pct:
-            return round(self.equity(chain) * pct / 100, 2)
-        return self.cfg["position_usd"]
+        wanted = self.equity(chain) * pct / 100 if pct else self.cfg["position_usd"]
+        # si la réserve ne couvre pas la mise, on investit le reste, en gardant un peu pour le gas
+        available = self.state["cash"][chain] - self.gas(chain)
+        return round(max(0.0, min(wanted, available)), 2)
 
     def update_pending(self, key, pair, events):
         c, st = self.cfg, self.state
