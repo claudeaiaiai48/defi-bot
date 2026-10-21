@@ -69,6 +69,12 @@
     "max_tax_pct": 1,
     "require_creator_holding": true,
     "max_insiders_pct": 15,
-    "cache_minutes": 10
+    "cache_minutes": 10,
+    "base_excluded_holders": [
+      "0x498581ff718922c3f8e6a244956af099b2652b2b"
+    ]
+  },
+  "clanker": {
+    "enabled": true
   }
 }
