@@ -17,20 +17,43 @@
   },
   "paper": {
     "enabled": true,
-    "capital_usd": 300,
+    "reset_id": "strategie-v1-2026-10-21",
+    "chains": [
+      "solana"
+    ],
+    "capital_usd": 150,
     "position_usd": 30,
-    "max_open": 8,
-    "fee_pct": 1.0,
-    "slippage_pct": 1.5,
-    "stop_initial_pct": -25,
-    "tp1_pct": 40,
-    "tp1_sell_frac": 0.5,
+    "max_open": 3,
+    "max_trades_per_day": 10,
+    "kill_switch_drawdown_pct": 30,
+    "fee_pct": 1.75,
+    "slippage_pct": 0.5,
+    "pullback_min_pct": 10,
+    "pullback_max_pct": 15,
+    "green_candle_max_pct": 15,
+    "entry_window_min": 5,
+    "stop_initial_pct": -20,
+    "tp1_pct": 30,
+    "tp1_sell_frac": 0.55,
     "stop_after_tp1_pct": 8,
     "tp2_pct": 80,
-    "moonbag_frac": 0.2,
-    "moonbag_trail_pct": 40,
-    "max_hold_hours": 24,
-    "rug_liq_ratio": 0.3,
-    "missing_loops_rug": 10
+    "tp2_sell_frac": 0.35,
+    "moonbag_frac": 0.1,
+    "moonbag_ladder": [
+      [
+        5,
+        0.5
+      ],
+      [
+        20,
+        0.25
+      ],
+      [
+        100,
+        0.25
+      ]
+    ],
+    "max_minutes_without_tp1": 90,
+    "missing_loops_dead": 10
   }
 }
