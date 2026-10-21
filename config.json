@@ -81,5 +81,86 @@
     "farcaster": true,
     "smart_money": true
   },
-  "smart_money": []
+  "smart_money": [
+    {
+      "address": "5YRgrP3mjGzrzirYYN5HAQH19cTYREYwGxW6XRJQUzij",
+      "source": "kolscan-mensuel-1"
+    },
+    {
+      "address": "4vw54BmAogeRV3vPKWyFet5yf8DTLcREzdSzx4rw9Ud9",
+      "source": "kolscan-mensuel-2"
+    },
+    {
+      "address": "215nhcAHjQQGgwpQSJQ7zR26etbjjtVdW74NLzwEgQjP",
+      "source": "kolscan-mensuel-3"
+    },
+    {
+      "address": "ardinRsN1mNYVeoJWTBsWeYeXvuR9UUDGMsCDKpb6AT",
+      "source": "kolscan-mensuel-4"
+    },
+    {
+      "address": "BQVz7fQ1WsQmSTMY3umdPEPPTm1sdcBcX9sP7o6kPRmB",
+      "source": "kolscan-mensuel-5"
+    },
+    {
+      "address": "387FRwow6MKDhSwuMULhKjqeXuxoBY4BbbaSntdk9LaH",
+      "source": "kolscan-mensuel-6"
+    },
+    {
+      "address": "EeXvxkcGqMDZeTaVeawzxm9mbzZwqDUMmfG3bF7uzumH",
+      "source": "kolscan-mensuel-7"
+    },
+    {
+      "address": "EqiFgyNw6kgrmYstWyrP8VjKhka7XEmKTZzHSmwpr1Zb",
+      "source": "kolscan-mensuel-8"
+    },
+    {
+      "address": "4Be9CvxqHW6BYiRAxW9Q3xu1ycTMWaL5z8NX4HR3ha7t",
+      "source": "kolscan-mensuel-9"
+    },
+    {
+      "address": "78N177fzNJpp8pG49xDv1efYcTMSzo9tPTKEA9mAVkh2",
+      "source": "kolscan-mensuel-10"
+    },
+    {
+      "address": "FqamE7xrahg7FEWoByrx1o8SeyHt44rpmE6ZQfT7zrve",
+      "source": "kolscan-mensuel-11"
+    },
+    {
+      "address": "862TYSvRYoiHAK3F3WwTRYAfuGiQaGdxedN9AGvRGWo2",
+      "source": "kolscan-mensuel-12"
+    },
+    {
+      "address": "B32QbbdDAyhvUQzjcaM5j6ZVKwjCxAwGH5Xgvb9SJqnC",
+      "source": "kolscan-mensuel-13"
+    },
+    {
+      "address": "CgaA9a1JwAXJyfHuvZ7VW8YfTVRkdiT5mjBBSKcg7Rz5",
+      "source": "kolscan-mensuel-14"
+    },
+    {
+      "address": "6S8GezkxYUfZy9JPtYnanbcZTMB87Wjt1qx3c6ELajKC",
+      "source": "kolscan-mensuel-15"
+    },
+    {
+      "address": "8MaVa9kdt3NW4Q5HyNAm1X5LbR8PQRVDc1W8NMVK88D5",
+      "source": "kolscan-mensuel-16"
+    },
+    {
+      "address": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "source": "kolscan-mensuel-17"
+    },
+    {
+      "address": "6KR7SorsUQtNH6CB6JpAnWCAKeTysa95iyXeWihdNeGT",
+      "source": "kolscan-mensuel-18"
+    },
+    {
+      "address": "4BdKaxN8G6ka4GYtQQWk4G4dZRUTX2vQH9GcXdBREFUk",
+      "source": "kolscan-mensuel-19"
+    },
+    {
+      "address": "4DdrfiDHpmx55i4SPssxVzS9ZaKLb8qr45NKY9Er9nNh",
+      "source": "kolscan-mensuel-20"
+    }
+  ]
 }
