@@ -4,7 +4,7 @@
 set -euo pipefail
 name="${1:-}"
 [[ "$name" =~ ^[A-Z][A-Z0-9_]{1,40}$ ]] || { echo "nom de clé invalide"; exit 1; }
-value="$(cat | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+value="$(cat | tr -d '\r' | tr -cd '[:print:]\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
 [ -n "$value" ] || { echo "valeur vide"; exit 1; }
 [[ "$value" != *$'\n'* ]] || { echo "valeur sur plusieurs lignes refusée"; exit 1; }
 mkdir -p /etc/defi-bot
@@ -16,4 +16,4 @@ printf '%s=%s\n' "$name" "$value" >> "$tmp"
 install -o root -g defibot -m 640 "$tmp" "$f"
 rm -f "$tmp"
 systemctl restart defi-bot
-echo "CLE_OK ${name}"
+echo "CLE_OK ${name} longueur=${#value}"
