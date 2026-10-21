@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from paper import Paper
 import security
 import social
+import tgwatch
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.environ.get("DEFIBOT_DATA", "/var/lib/defi-bot")
@@ -139,6 +140,10 @@ def main():
     started = now().isoformat(timespec="seconds")
     loops = 0
     log("defi-bot observation démarré")
+    try:
+        tgwatch.start()
+    except Exception as e:
+        log(f"telegram: {e}")
     paper = None
     while True:
         cfg = load_config()
@@ -239,7 +244,7 @@ def main():
             "mode": cfg["mode"], "started": started,
             "last_loop": now().isoformat(timespec="seconds"), "loops": loops,
             "tracked": len(tracked), "snapshots_last_loop": snaps,
-            "signals_total": len(signaled), "sources": social.STATUS,
+            "signals_total": len(signaled), "sources": {**social.STATUS, "telegram": tgwatch.STATE},
             "cles_presentes": social.keys_present(), "config": cfg,
         })
         write_public("signals.json", recent_signals)
