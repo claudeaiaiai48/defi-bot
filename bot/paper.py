@@ -41,7 +41,16 @@ class Paper:
     # ---------- suivi après sortie (la sortie était-elle une bonne décision ?) ----------
     def _suivi_cfg(self):
         c = self.cfg.get("post_exit_track", {})
-        return c.get("reasons", ["temps"]), c.get("minutes", 240)
+        return c.get("reasons", ["temps", "stop", "stop_tp1"]), c.get("minutes", 240)
+
+    def _cible(self, g):
+        """Prix dont l'atteinte après la sortie prouve que la sortie était prématurée."""
+        c, r = self.cfg, g.get("raison", "temps")
+        if r == "stop":
+            return g["entry_price"]                                   # le token est revenu à l'entrée
+        if r == "stop_tp1":
+            return g["entry_price"] * (1 + c["tp2_pct"] / 100)        # il a atteint la cible TP2
+        return g["entry_price"] * (1 + c["tp1_pct"] / 100)            # sortie au temps : il a atteint TP1
 
     def _start_suivi(self, key, trade, late=False):
         reasons, minutes = self._suivi_cfg()
@@ -61,7 +70,7 @@ class Paper:
                    "close_t": trade["close_t"], "pnl_pct": trade["pnl_pct"],
                    "last": exit_price, "max": exit_price, "min": exit_price,
                    "marks": {}, "first": None, "missing": 0, "done": False,
-                   "partiel": late, "verdict": None}
+                   "partiel": late, "verdict": None, "raison": trade.get("close_reason")}
 
     def update_suivi(self, key, pair, events):
         c, g = self.cfg, self.state["suivi"][key]
@@ -82,9 +91,9 @@ class Paper:
         g["last"] = price
         g["max"], g["min"] = max(g["max"], price), min(g["min"], price)
         if g["first"] is None:
-            if price >= g["entry_price"] * (1 + c["tp1_pct"] / 100):
-                g["first"] = "tp1"
-            elif price <= g["entry_price"] * (1 + c["stop_initial_pct"] / 100):
+            if price >= self._cible(g):
+                g["first"] = "cible"
+            elif g.get("raison", "temps") == "temps" and price <= g["entry_price"] * (1 + c["stop_initial_pct"] / 100):
                 g["first"] = "stop"
         elapsed = (time.time() - g["close_t"]) / 60
         for m in (30, 60, 120, 240):
@@ -93,7 +102,7 @@ class Paper:
         if elapsed >= minutes or g["missing"] >= c["missing_loops_dead"]:
             g["done"] = True
             evol = (price / g["exit_price"] - 1) * 100
-            if g["first"] == "tp1":
+            if g["first"] in ("tp1", "cible"):
                 g["verdict"] = "mauvaise sortie"
             elif g["first"] == "stop" or evol <= -10:
                 g["verdict"] = "bonne sortie"
@@ -109,19 +118,35 @@ class Paper:
         fin = [g for g in gs if g["done"]]
         n = lambda v: sum(1 for g in fin if g["verdict"] == v)
         _, minutes = self._suivi_cfg()
+        par_raison = {}
+        for g in gs:
+            b = par_raison.setdefault(g.get("raison", "temps"),
+                                      {"suivis": 0, "termines": 0, "bonnes": 0, "mauvaises": 0, "neutres": 0})
+            b["suivis"] += 1
+            if g["done"]:
+                b["termines"] += 1
+                k = {"bonne sortie": "bonnes", "mauvaise sortie": "mauvaises", "neutre": "neutres"}[g["verdict"]]
+                b[k] += 1
+        for b in par_raison.values():
+            b["part_bonnes_pct"] = round(100 * b["bonnes"] / b["termines"], 1) if b["termines"] else None
         return {
+            "par_raison": par_raison,
+            "regle_verdict": {"temps": "mauvaise sortie si +30 % vs entree atteint apres", "stop": "mauvaise sortie si retour au prix d'entree",
+                              "stop_tp1": "mauvaise sortie si +80 % vs entree atteint", "bonne": "token tombe de 10 % ou plus apres la sortie"},
             "raisons_suivies": self._suivi_cfg()[0], "duree_suivi_min": minutes,
             "en_cours": len(gs) - len(fin), "termines": len(fin),
             "bonnes_sorties": n("bonne sortie"), "mauvaises_sorties": n("mauvaise sortie"),
             "neutres": n("neutre"),
             "part_bonnes_pct": round(100 * n("bonne sortie") / len(fin), 1) if fin else None,
-            "detail": [{"symbol": g["symbol"], "chain": g["chain"], "pnl_trade_pct": g["pnl_pct"],
+            "detail": [{"symbol": g["symbol"], "chain": g["chain"], "raison_sortie": g.get("raison", "temps"),
+                        "pnl_trade_pct": g["pnl_pct"],
                         "prix_sortie": g["exit_price"], "prix_actuel": g["last"],
                         "evolution_depuis_sortie_pct": {**g["marks"],
                                                         "actuelle": round((g["last"] / g["exit_price"] - 1) * 100, 1)},
                         "max_depuis_sortie_pct": round((g["max"] / g["exit_price"] - 1) * 100, 1),
                         "min_depuis_sortie_pct": round((g["min"] / g["exit_price"] - 1) * 100, 1),
-                        "premier_evenement": g["first"] or "aucun (+30 % / -20 % vs entrée)",
+                        "premier_evenement": {"cible": "cible atteinte apres la sortie", "tp1": "cible atteinte apres la sortie",
+                                              "stop": "chute a -20 % vs entree"}.get(g["first"], "aucun"),
                         "etat": "terminé" if g["done"] else "en cours",
                         "verdict": g["verdict"], "suivi_partiel": g["partiel"], "url": g["url"]}
                        for g in gs[-30:][::-1]],
@@ -393,6 +418,6 @@ class Paper:
             "trades_clos": len(st["closed"]), "par_strategie": by,
             "derniers_trades": st["closed"][-20:][::-1],
             "signaux_sans_repli": len(st["missed"]),
-            "sorties_temps_suivies": self.suivi_summary(),
+            "sorties_suivies": self.suivi_summary(),
             "regles": {k: c[k] for k in c if k != "enabled"},
         }
