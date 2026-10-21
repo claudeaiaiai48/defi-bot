@@ -76,5 +76,10 @@
   },
   "clanker": {
     "enabled": true
-  }
+  },
+  "social": {
+    "farcaster": true,
+    "smart_money": true
+  },
+  "smart_money": []
 }
