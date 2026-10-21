@@ -116,6 +116,35 @@ def smart_money(token, wallets, hours=6):
     return {"acheteurs": buyers, "liste_vide": False}
 
 
+_selftest_done = {}
+
+
+def selftest():
+    """Vérifie une fois par heure que chaque clé est acceptée (requêtes très légères)."""
+    now = time.time()
+    if now - _selftest_done.get("t", 0) < 3600:
+        return
+    _selftest_done["t"] = now
+    k = os.environ.get("NEYNAR_API_KEY")
+    if k:
+        try:
+            _get("https://api.neynar.com/v2/farcaster/user/bulk/?fids=3", {"x-api-key": k})
+            STATUS["neynar_cle"] = "valide"
+        except Exception as e:
+            STATUS["neynar_cle"] = _err(e)
+    k = os.environ.get("HELIUS_API_KEY")
+    if k:
+        try:
+            req = urllib.request.Request(
+                f"https://mainnet.helius-rpc.com/?api-key={urllib.parse.quote(k)}",
+                data=b'{"jsonrpc":"2.0","id":1,"method":"getHealth"}',
+                headers={**UA, "Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                STATUS["helius_cle"] = "valide" if b"ok" in r.read() else "réponse inattendue"
+        except Exception as e:
+            STATUS["helius_cle"] = _err(e)
+
+
 def enrich(chain, row, cfg):
     """Ajoute les données sociales à un signal (sans décider de l'achat)."""
     s = cfg.get("social", {})
