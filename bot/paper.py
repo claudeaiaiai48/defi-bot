@@ -128,6 +128,7 @@ class Paper:
             "tp1": False, "tp2": False, "moon_steps": [], "missing": 0,
             "stop": price * (1 + c["stop_initial_pct"] / 100),
             "peak": price, "last_price": price, "exits": [],
+            "social": row.get("social"),
         }
         events.append({"type": "achat", "key": key, "symbol": row["symbol"],
                        "strategy": p["strategy"], "price": price, "usd": size,
@@ -151,8 +152,8 @@ class Paper:
     def _close(self, key, reason, events):
         pos = self.state["open"].pop(key)
         pnl = pos["proceeds_usd"] - pos["cost_usd"]
-        trade = {k: pos[k] for k in ("chain", "token", "symbol", "strategy", "url",
-                                     "entry_t", "entry_price", "cost_usd", "exits")}
+        trade = {k: pos.get(k) for k in ("chain", "token", "symbol", "strategy", "url",
+                                         "entry_t", "entry_price", "cost_usd", "exits", "social")}
         trade.update({"close_t": time.time(), "close_reason": reason,
                       "proceeds_usd": round(pos["proceeds_usd"], 2), "pnl_usd": round(pnl, 2),
                       "pnl_pct": round(100 * pnl / pos["cost_usd"], 1)})
