@@ -28,9 +28,17 @@
     },
     "position_pct": 20,
     "position_usd": 30,
-    "max_open_per_chain": 3,
+    "max_open_per_chain": null,
     "max_trades_per_day": null,
-    "kill_switch_drawdown_pct": 30,
+    "kill_switch_drawdown_pct": null,
+    "refill": {
+      "seuil_usd": 100,
+      "montant_usd": 300,
+      "repartition": {
+        "solana": 150,
+        "base": 150
+      }
+    },
     "fee_pct": {
       "solana": 1.75,
       "base": 1.0
