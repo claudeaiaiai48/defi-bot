@@ -17,8 +17,19 @@ STATUS = {}          # état de chaque source, publié dans status.json
 _wallet_cache = {}   # wallet -> (t, swaps)
 
 
+def _shape(v):
+    """Forme d'une clé SANS rien révéler de sa valeur (aide au diagnostic)."""
+    if not v:
+        return False
+    import re
+    return {"longueur": len(v),
+            "format_uuid": bool(re.fullmatch(r"[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", v)),
+            "caracteres_bizarres": bool(re.search(r"[^A-Za-z0-9_\-]", v)),
+            "ressemble_cle_ssh": v.startswith("ssh-")}
+
+
 def keys_present():
-    return {k: bool(os.environ.get(k)) for k in
+    return {k: _shape(os.environ.get(k)) for k in
             ("NEYNAR_API_KEY", "HELIUS_API_KEY", "REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET")}
 
 
