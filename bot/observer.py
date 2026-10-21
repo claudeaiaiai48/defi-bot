@@ -9,6 +9,7 @@ import json, os, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 from paper import Paper
 import security
+import social
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.environ.get("DEFIBOT_DATA", "/var/lib/defi-bot")
@@ -187,6 +188,10 @@ def main():
                 snaps += 1
                 if (chain, addr) not in signaled and is_signal(chain, p, cfg):
                     signaled.add((chain, addr))
+                    try:
+                        row["social"] = social.enrich(chain, row, cfg)
+                    except Exception as e:
+                        log(f"social: {e}")
                     append("signals", row)
                     recent_signals = ([row] + recent_signals)[:50]
                     log(f"SIGNAL {chain} {row['symbol']} vol1h={row['vol'].get('h1')} liq={row['liq_usd']}")
@@ -228,7 +233,8 @@ def main():
             "mode": cfg["mode"], "started": started,
             "last_loop": now().isoformat(timespec="seconds"), "loops": loops,
             "tracked": len(tracked), "snapshots_last_loop": snaps,
-            "signals_total": len(signaled), "config": cfg,
+            "signals_total": len(signaled), "sources": social.STATUS,
+            "cles_presentes": social.keys_present(), "config": cfg,
         })
         write_public("signals.json", recent_signals)
         write_public("securite.json", sec_log)
