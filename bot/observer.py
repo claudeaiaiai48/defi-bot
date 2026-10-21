@@ -150,6 +150,10 @@ def main():
         if paper:
             paper.cfg = pcfg
         events = []
+        try:
+            social.selftest()
+        except Exception as e:
+            log(f"selftest: {e}")
         found = discover(cfg["chains"])
         if "base" in cfg["chains"] and cfg.get("clanker", {}).get("enabled"):
             new = [a for a in discover_clanker() if a.lower() not in security.CLANKER]
