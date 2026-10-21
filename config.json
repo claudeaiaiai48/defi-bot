@@ -1,0 +1,13 @@
+{
+  "mode": "observation",
+  "chains": ["solana", "base"],
+  "poll_seconds": 60,
+  "track_hours": 6,
+  "signal": {
+    "min_volume_h1_usd": 50000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 300,
+    "solana_dex_ids": ["pumpswap"],
+    "base_dex_ids": []
+  }
+}
