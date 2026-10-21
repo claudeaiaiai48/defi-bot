@@ -26,8 +26,9 @@
       "solana": 150,
       "base": 150
     },
+    "position_pct": 20,
     "position_usd": 30,
-    "max_open": 3,
+    "max_open_per_chain": 3,
     "max_trades_per_day": 10,
     "kill_switch_drawdown_pct": 30,
     "fee_pct": {
