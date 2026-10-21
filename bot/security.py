@@ -88,6 +88,14 @@ def _solana(token, cfg):
     det["initiés_pct"] = round(ins_pct, 1)
     if ins_pct >= cfg["max_insiders_pct"]:
         reasons.append(f"bundle / initiés {ins_pct:.1f} %")
+    # données enregistrées avec chaque trade (pour affiner les filtres), sans effet sur la décision
+    det["holders_total"] = d.get("totalHolders")
+    det["liquidite_rugcheck_usd"] = round(float(d.get("totalMarketLiquidity") or 0))
+    det["nb_reseaux_inities"] = len(d.get("insiderNetworks") or [])
+    det["top1_pct"] = round(float(holders[0].get("pct") or 0), 2) if holders else None
+    det["lp_verrouille_pct"] = [(m.get("lp") or {}).get("lpLockedPct") for m in d.get("markets") or []]
+    det["score_rugcheck"] = d.get("score_normalised")
+    det["risques"] = [f"{r.get('level')}:{r.get('name')}" for r in d.get("risks") or []]
     return {"ok": not reasons, "raisons": reasons, "details": det}
 
 
