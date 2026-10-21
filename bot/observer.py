@@ -7,6 +7,7 @@ qui passent les filtres de config.json. Sortie publique : /var/lib/defi-bot/publ
 """
 import json, os, time, urllib.request, urllib.error
 from datetime import datetime, timezone
+from paper import Paper
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.environ.get("DEFIBOT_DATA", "/var/lib/defi-bot")
@@ -118,9 +119,17 @@ def main():
     started = now().isoformat(timespec="seconds")
     loops = 0
     log("defi-bot observation démarré")
+    paper = None
     while True:
         cfg = load_config()
         t0 = time.time()
+        pcfg = cfg.get("paper", {})
+        if pcfg.get("enabled") and paper is None:
+            paper = Paper(DATA, pcfg)
+            log("paper trading activé")
+        if paper:
+            paper.cfg = pcfg
+        events = []
         for key, src in discover(cfg["chains"]).items():
             entry = tracked.setdefault(key, {"first": t0, "sources": set()})
             entry["sources"] |= src
@@ -130,7 +139,16 @@ def main():
         snaps = 0
         for chain in cfg["chains"]:
             addrs = [a for (c, a) in tracked if c == chain]
-            for addr, p in snapshot(chain, addrs).items():
+            if paper:
+                addrs += [a for (c, a) in paper.open_keys() if c == chain and a not in addrs]
+            snaps_chain = snapshot(chain, addrs)
+            if paper:
+                for (c, a) in paper.open_keys():
+                    if c == chain:
+                        paper.update(f"{c}:{a}", snaps_chain.get(a), events)
+            for addr, p in snaps_chain.items():
+                if (chain, addr) not in tracked:
+                    continue
                 row = compact(chain, addr, p, tracked[(chain, addr)]["sources"])
                 append("observations", row)
                 snaps += 1
@@ -139,6 +157,16 @@ def main():
                     append("signals", row)
                     recent_signals = ([row] + recent_signals)[:50]
                     log(f"SIGNAL {chain} {row['symbol']} vol1h={row['vol'].get('h1')} liq={row['liq_usd']}")
+                    if paper:
+                        strat = chain + ("-boost" if "boost" in row["sources"] else "-organique")
+                        paper.enter(row, strat, events)
+        for ev in events:
+            ev["t"] = now().isoformat(timespec="seconds")
+            append("paper", ev)
+            log(f"PAPER {ev}")
+        if paper:
+            paper.save()
+            write_public("paper.json", paper.summary())
         loops += 1
         write_public("status.json", {
             "mode": cfg["mode"], "started": started,
