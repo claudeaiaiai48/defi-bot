@@ -28,6 +28,11 @@
     },
     "position_pct": 20,
     "position_usd": 30,
+    "position_min_usd": 5,
+    "gas_reserve_usd": {
+      "solana": 2,
+      "base": 2
+    },
     "max_open_per_chain": null,
     "max_trades_per_day": null,
     "kill_switch_drawdown_pct": null,
