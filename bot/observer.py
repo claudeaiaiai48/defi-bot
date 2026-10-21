@@ -8,6 +8,7 @@ qui passent les filtres de config.json. Sortie publique : /var/lib/defi-bot/publ
 import json, os, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 from paper import Paper
+import security
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.environ.get("DEFIBOT_DATA", "/var/lib/defi-bot")
@@ -162,9 +163,16 @@ def main():
                     append("signals", row)
                     recent_signals = ([row] + recent_signals)[:50]
                     log(f"SIGNAL {chain} {row['symbol']} vol1h={row['vol'].get('h1')} liq={row['liq_usd']}")
-                    if paper:
+                    if paper and chain in paper.cfg["chains"]:
                         strat = chain + ("-boost" if "boost" in row["sources"] else "-organique")
-                        paper.signal(row, strat, events)
+                        scfg = cfg.get("security", {})
+                        sec = security.check(chain, addr, scfg) if scfg.get("enabled") else {"ok": True}
+                        if sec["ok"]:
+                            paper.signal(row, strat, events)
+                        else:
+                            events.append({"type": "rejet sécurité", "key": f"{chain}:{addr}",
+                                           "symbol": row["symbol"], "raisons": sec["raisons"],
+                                           "details": sec.get("details")})
         if paper:
             paper.risk_check(events)
         for ev in events:
