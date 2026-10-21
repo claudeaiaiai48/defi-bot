@@ -8,6 +8,7 @@
 Sources gratuites, sans clé :
 - Solana : RugCheck (détenteurs, créateur, réseaux d'initiés, autorités, frais de transfert)
 - Base : Honeypot.is (simulation achat/revente, taxes) + GoPlus (détenteurs, créateur)
+  Tokens Clanker : la règle du créateur ne s'applique pas (c'est la plateforme qui déploie).
 Si une source ne répond pas, le token est refusé (prudence).
 """
 import json, time, urllib.request
@@ -20,6 +21,9 @@ def _get(url):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=20) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+CLANKER = set()   # adresses (minuscules) des tokens Clanker vus sur Base
 
 
 def check(chain, token, cfg):
@@ -110,15 +114,21 @@ def _base(token, cfg):
         if r.get("is_mintable") == "1" or r.get("hidden_owner") == "1" or r.get("transfer_pausable") == "1":
             reasons.append("contrat à risque (mint / propriétaire caché / pause)")
         pools = {(x.get("pair") or "").lower() for x in r.get("dex") or []}
+        pools |= {a.lower() for a in cfg.get("base_excluded_holders", [])}
         holders = [h for h in r.get("holders") or []
                    if (h.get("address") or "").lower() not in pools and not h.get("is_locked")
                    and "pool" not in (h.get("tag") or "").lower()]
         top10 = 100 * sum(float(h.get("percent") or 0) for h in holders[:10])
         det["top10_hors_pool_pct"] = round(top10, 1)
-        if top10 >= cfg["max_top10_pct"]:
+        if not r.get("holders"):
+            reasons.append("détenteurs pas encore indexés")
+        elif top10 >= cfg["max_top10_pct"]:
             reasons.append(f"top 10 = {top10:.1f} %")
+        det["clanker"] = token.lower() in CLANKER
         det["createur_detient"] = float(r.get("creator_percent") or 0) > 0
-        if cfg["require_creator_holding"] and not det["createur_detient"]:
+        if det["clanker"]:
+            det["regle_createur"] = "non appliquée (Clanker : la plateforme déploie le contrat)"
+        elif cfg["require_creator_holding"] and not det["createur_detient"]:
             reasons.append("le créateur a tout vendu")
     det["bundle"] = "non vérifiable sur Base (pas de source gratuite)"
     return {"ok": not reasons, "raisons": reasons, "details": det}
