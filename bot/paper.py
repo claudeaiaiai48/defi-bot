@@ -171,7 +171,7 @@ class Paper:
         if st["halted"]:
             return "arrêt -30 %"
         limit = c.get("max_open_per_chain", c.get("max_open"))
-        if sum(1 for p in st["open"].values() if p["chain"] == chain) >= limit:
+        if limit and sum(1 for p in st["open"].values() if p["chain"] == chain) >= limit:
             return f"{limit} positions ouvertes sur {chain}"
         daily = c.get("max_trades_per_day")          # None / 0 = pas de limite journalière
         if daily and st["trades_per_day"].get(today(), 0) >= daily:
@@ -317,21 +317,55 @@ class Paper:
         if pos["qty"] <= pos["qty0"] * 1e-9:
             self._close(key, "moonbag vendue", events)
 
+    def injected(self, chain=None):
+        """Capital total mis dans le compte fictif : réserves de départ + recharges."""
+        inj = self.state.setdefault("injected", dict(self.cfg["reserves"]))
+        return sum(inj.values()) if chain is None else inj.get(chain, 0)
+
     def risk_check(self, events):
         c, st = self.cfg, self.state
-        if not st["halted"] and self.equity() <= self.capital() * (1 - c["kill_switch_drawdown_pct"] / 100):
+        rf = c.get("refill")
+        if rf and self.equity() < rf["seuil_usd"]:
+            # paper trading : le compte est rechargé ; la perte totale reste documentée
+            eq = self.equity()
+            split = rf.get("repartition") or {ch: rf["montant_usd"] / len(c["reserves"]) for ch in c["reserves"]}
+            inj = st.setdefault("injected", dict(c["reserves"]))
+            for ch, a in split.items():
+                st["cash"][ch] += a
+                inj[ch] = inj.get(ch, 0) + a
+            added = sum(split.values())
+            st.setdefault("refills", []).append({
+                "t": time.time(), "valeur_avant_usd": round(eq, 2), "ajoute_usd": added,
+                "capital_total_injecte_usd": round(self.injected(), 2),
+                "perte_totale_usd": round(self.injected() - added - eq, 2)})
+            events.append({"type": "recharge", "valeur_avant_usd": round(eq, 2), "ajoute_usd": added,
+                           "perte_totale_avant_recharge_usd": round(self.injected() - added - eq, 2)})
+        kill = c.get("kill_switch_drawdown_pct")
+        if kill and not st["halted"] and self.equity() <= self.injected() * (1 - kill / 100):
             st["halted"] = True
-            events.append({"type": "arrêt", "reason": f"capital -{c['kill_switch_drawdown_pct']} %"})
+            events.append({"type": "arrêt", "reason": f"capital -{kill} %"})
 
     # ---------- résumé public ----------
     def summary(self):
         st, c = self.state, self.cfg
         equity = self.equity()
         by = {}
-        chains = {ch: {"reserve_depart": r, "valeur": round(self.equity(ch), 2),
-                       "pnl_pct": round(100 * (self.equity(ch) / r - 1), 2),
+        chains = {ch: {"reserve_depart": r, "capital_injecte": round(self.injected(ch), 2),
+                       "valeur": round(self.equity(ch), 2),
+                       "pnl_pct": round(100 * (self.equity(ch) / self.injected(ch) - 1), 2),
                        "cash": round(st["cash"][ch], 2)}
                   for ch, r in c["reserves"].items()}
+        injected = self.injected()
+        refills = st.get("refills", [])
+        recharges = {
+            "nombre": len(refills), "montant_total_ajoute_usd": round(sum(r["ajoute_usd"] for r in refills), 2),
+            "capital_depart_usd": self.capital(), "capital_total_injecte_usd": round(injected, 2),
+            "valeur_actuelle_usd": round(equity, 2),
+            "perte_totale_usd": round(injected - equity, 2),
+            "perte_totale_pct": round(100 * (injected - equity) / injected, 1),
+            "note": "perte_totale = capital total injecte (depart + recharges) - valeur actuelle ; negatif = gain",
+            "historique": refills[-20:],
+        }
         for t in st["closed"]:
             s = by.setdefault(t["strategy"], {"trades": 0, "gagnants": 0, "pnl_usd": 0.0})
             s["trades"] += 1
@@ -341,7 +375,8 @@ class Paper:
             s["taux_reussite_pct"] = round(100 * s["gagnants"] / s["trades"], 1)
         return {
             "capital_depart": self.capital(), "valeur": round(equity, 2),
-            "pnl_total_pct": round(100 * (equity / self.capital() - 1), 2),
+            "pnl_total_pct": round(100 * (equity / injected - 1), 2),
+            "recharges": recharges,
             "par_chaine": chains, "arret_risque": st["halted"],
             "trades_aujourdhui": st["trades_per_day"].get(today(), 0),
             "en_attente_de_repli": [{"symbol": p["row"]["symbol"], "chain": p["row"]["chain"], "plus_haut": p["high"],
