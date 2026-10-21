@@ -1,13 +1,36 @@
 {
-  "mode": "observation",
-  "chains": ["solana", "base"],
+  "mode": "observation + paper trading",
+  "chains": [
+    "solana",
+    "base"
+  ],
   "poll_seconds": 60,
   "track_hours": 6,
   "signal": {
     "min_volume_h1_usd": 50000,
     "min_liquidity_usd": 15000,
     "min_txns_h1": 300,
-    "solana_dex_ids": ["pumpswap"],
+    "solana_dex_ids": [
+      "pumpswap"
+    ],
     "base_dex_ids": []
+  },
+  "paper": {
+    "enabled": true,
+    "capital_usd": 300,
+    "position_usd": 30,
+    "max_open": 8,
+    "fee_pct": 1.0,
+    "slippage_pct": 1.5,
+    "stop_initial_pct": -25,
+    "tp1_pct": 40,
+    "tp1_sell_frac": 0.5,
+    "stop_after_tp1_pct": 8,
+    "tp2_pct": 80,
+    "moonbag_frac": 0.2,
+    "moonbag_trail_pct": 40,
+    "max_hold_hours": 24,
+    "rug_liq_ratio": 0.3,
+    "missing_loops_rug": 10
   }
 }
