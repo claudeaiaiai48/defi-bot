@@ -80,7 +80,8 @@
     "post_exit_track": {"rugs": ["solana:CABBAGE"]},
     "variantes": {
       "B": {"label": "B - TP1 plus tard et plus petit, moonbag 30 %", "tp1_pct": 50, "tp1_sell_frac": 0.35, "tp2_pct": 100, "tp2_sell_frac": 0.35, "moonbag_frac": 0.3},
-      "C": {"label": "C - stop serre -10 %", "stop_initial_pct": -10}
+      "C": {"label": "C - stop serre -10 %", "stop_initial_pct": -10},
+      "D": {"label": "D - signaux larges (volume 8k, liquidite 5k, 80 txns, tous les DEX)", "signal": {"min_volume_h1_usd": 8000, "min_liquidity_usd": 5000, "min_txns_h1": 80, "solana_dex_ids": [], "base_dex_ids": []}}
     }
   },
   "security": {
