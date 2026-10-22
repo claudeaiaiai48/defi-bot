@@ -77,7 +77,11 @@
     "max_minutes_without_tp1": 90,
     "fast_seconds": 10,
     "missing_loops_dead": 20,
-    "post_exit_track": {"rugs": ["solana:CABBAGE"]}
+    "post_exit_track": {"rugs": ["solana:CABBAGE"]},
+    "variantes": {
+      "B": {"label": "B - TP1 plus tard et plus petit, moonbag 30 %", "tp1_pct": 50, "tp1_sell_frac": 0.35, "tp2_pct": 100, "tp2_sell_frac": 0.35, "moonbag_frac": 0.3},
+      "C": {"label": "C - stop serre -10 %", "stop_initial_pct": -10}
+    }
   },
   "security": {
     "enabled": true,
