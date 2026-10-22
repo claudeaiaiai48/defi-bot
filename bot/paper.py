@@ -129,8 +129,26 @@ class Paper:
                            "verdict_court": g["verdict"], "verdict_long": g["verdict_long"],
                            "evolution_pct": evol})
 
+    def _is_rug(self, chain, token, symbol):
+        """Token classé « rug » à la main (config post_exit_track.rugs : "chaine:SYMBOLE" ou "chaine:adresse")."""
+        rugs = {str(r).lower() for r in self.cfg.get("post_exit_track", {}).get("rugs", [])}
+        return f"{chain}:{symbol}".lower() in rugs or f"{chain}:{token}".lower() in rugs
+
+    def rug_list(self):
+        """Liste à part des rugs (exclus des stats de sortie), avec le snapshot sécurité pour affiner le filtre."""
+        out = []
+        for t in self.state["closed"]:
+            if self._is_rug(t["chain"], t["token"], t["symbol"]):
+                g = next((g for g in self.state.get("suivi", {}).values() if g.get("close_t") == t.get("close_t")), None)
+                out.append({"symbol": t["symbol"], "chain": t["chain"], "token": t["token"],
+                            "strategie": t["strategy"], "pnl_trade_pct": t["pnl_pct"],
+                            "raison_sortie": t.get("close_reason"), "url": t.get("url"),
+                            "evolution_depuis_sortie_pct": (round((g["last"] / g["exit_price"] - 1) * 100, 1) if g else None),
+                            "securite_a_l_entree": t.get("securite"), "social": t.get("social")})
+        return out
+
     def suivi_summary(self):
-        gs = list(self.state.get("suivi", {}).values())
+        gs = [g for g in self.state.get("suivi", {}).values() if not self._is_rug(g["chain"], g["token"], g["symbol"])]
         fin = [g for g in gs if g["done"]]
         n = lambda v: sum(1 for g in fin if g["verdict"] == v)
         _, minutes = self._suivi_cfg()
@@ -153,6 +171,7 @@ class Paper:
             b["long_part_bonnes_pct"] = (round(100 * b["long_bonnes"] / b["long_termines"], 1)
                                          if b["long_termines"] else None)
         return {
+            "rugs_a_part": self.rug_list(),
             "par_raison": par_raison,
             "regle_verdict": {"temps": "mauvaise sortie si +30 % vs entree atteint apres", "stop": "mauvaise sortie si retour au prix d'entree",
                               "stop_tp1": "mauvaise sortie si +80 % vs entree atteint", "bonne": "token tombe de 10 % ou plus apres la sortie"},
