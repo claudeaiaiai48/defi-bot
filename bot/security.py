@@ -15,6 +15,7 @@ import json, time, urllib.request
 
 UA = {"User-Agent": "defi-bot-observer/1.0", "Accept": "application/json"}
 _cache = {}
+REPORTS = {}          # derniers rapports RugCheck (lecture seule par la collecte d'infos)
 
 
 def _get(url):
@@ -44,6 +45,10 @@ def check(chain, token, cfg):
 
 def _solana(token, cfg):
     d = _get(f"https://api.rugcheck.xyz/v1/tokens/{token}/report")
+    REPORTS[token] = d
+    if len(REPORTS) > 60:
+        for k in list(REPORTS)[:20]:
+            REPORTS.pop(k, None)
     reasons, det = [], {}
     supply = float((d.get("token") or {}).get("supply") or 0)
 
