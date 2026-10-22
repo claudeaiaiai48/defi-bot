@@ -8,6 +8,7 @@ qui passent les filtres de config.json. Sortie publique : /var/lib/defi-bot/publ
 import gzip, json, os, shutil, threading, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 from paper import Paper
+from multipaper import MultiPaper
 import security
 import social
 import tgwatch
@@ -196,7 +197,7 @@ def comparer_prix(paper, addrs, snaps):
 def fast_check(paper):
     """Contrôle rapide des positions OUVERTES uniquement (stops, TP, moonbag) entre deux grandes boucles.
     Les entrées en attente (règle de la bougie) et la découverte restent au rythme normal."""
-    keys = [tuple(k.split(":", 1)) for k in list(paper.state["open"])]
+    keys = [tuple(k.split(":", 1)) for k in paper.open_keys()]
     if not keys:
         return
     events = []
@@ -210,15 +211,15 @@ def fast_check(paper):
                 log(f"comparer_prix: {e}")
         for a in addrs:
             key = f"{chain}:{a}"
-            if a in snaps and key in paper.state["open"]:     # donnée absente : on ne compte pas « disparu »
-                paper.update(key, snaps[a], events)
+            if a in snaps:     # donnée absente : on ne compte pas « disparu »
+                paper.update_open(key, snaps[a], events)
     paper.risk_check(events)
     for ev in events:
         ev["t"] = now().isoformat(timespec="seconds")
         append("paper", ev)
         log(f"PAPER {ev}")
     paper.save()
-    write_public("paper.json", paper.summary())
+    paper.publish(write_public)
 
 
 def main():
@@ -248,7 +249,7 @@ def main():
             threading.Thread(target=compresser_anciens, args=(DATA,), daemon=True).start()
         pcfg = cfg.get("paper", {})
         if pcfg.get("enabled") and paper is None:
-            paper = Paper(DATA, pcfg)
+            paper = MultiPaper(DATA, pcfg)
             log("paper trading activé")
         if paper:
             paper.cfg = pcfg
@@ -283,12 +284,7 @@ def main():
                     if c != chain:
                         continue
                     key = f"{c}:{a}"
-                    if key in paper.state["open"]:
-                        paper.update(key, snaps_chain.get(a), events)
-                    elif key in paper.state["pending"]:
-                        paper.update_pending(key, snaps_chain.get(a), events)
-                    elif key in paper.state.get("suivi", {}):
-                        paper.update_suivi(key, snaps_chain.get(a), events)
+                    paper.dispatch(key, snaps_chain.get(a), events)
             for addr, p in snaps_chain.items():
                 if (chain, addr) not in tracked:
                     continue
@@ -340,7 +336,7 @@ def main():
             log(f"PAPER {ev}")
         if paper:
             paper.save()
-            write_public("paper.json", paper.summary())
+            paper.publish(write_public)
         loops += 1
         write_public("status.json", {
             "mode": cfg["mode"], "started": started,
