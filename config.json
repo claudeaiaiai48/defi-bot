@@ -81,7 +81,8 @@
     "variantes": {
       "B": {"label": "B - TP1 plus tard et plus petit, moonbag 30 %", "tp1_pct": 50, "tp1_sell_frac": 0.35, "tp2_pct": 100, "tp2_sell_frac": 0.35, "moonbag_frac": 0.3},
       "C": {"label": "C - stop serre -10 %", "stop_initial_pct": -10},
-      "D": {"label": "D - signaux larges (volume 8k, liquidite 5k, 80 txns, tous les DEX)", "signal": {"min_volume_h1_usd": 8000, "min_liquidity_usd": 5000, "min_txns_h1": 80, "solana_dex_ids": [], "base_dex_ids": []}}
+      "D": {"label": "D - signaux larges (volume 8k, liquidite 5k, 80 txns, tous les DEX)", "signal": {"min_volume_h1_usd": 8000, "min_liquidity_usd": 5000, "min_txns_h1": 80, "solana_dex_ids": [], "base_dex_ids": []}},
+      "E": {"label": "E - Base seule, signaux larges (300 $ tout sur Base)", "chains": ["base"], "reserves": {"base": 300}, "gas_reserve_usd": {"base": 2}, "refill": {"seuil_usd": 100, "montant_usd": 300, "repartition": {"base": 300}}, "signal": {"min_volume_h1_usd": 8000, "min_liquidity_usd": 5000, "min_txns_h1": 80, "solana_dex_ids": [], "base_dex_ids": []}}
     }
   },
   "security": {
@@ -99,6 +100,7 @@
     ]
   },
   "outils_collecte": {"enabled": true, "helius": true, "max_wallets": 10},
+  "decouverte_gecko": {"enabled": true, "pages": 2},
   "clanker": {
     "enabled": true
   },
