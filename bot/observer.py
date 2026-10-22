@@ -167,6 +167,32 @@ def collecter_outils(chain, p, rep, row, cfg):
     threading.Thread(target=run, daemon=True).start()
 
 
+PRIX_LOG = []      # derniers relevés Jupiter vs DexScreener (publiés dans prix.json pour l'analyse)
+
+
+def comparer_prix(paper, addrs, snaps):
+    """Collecte seule (aucun effet sur les décisions) : prix Jupiter vs DexScreener des positions Solana ouvertes,
+    pour mesurer de combien Jupiter est en avance sur les chutes de prix."""
+    try:
+        req = urllib.request.Request("https://lite-api.jup.ag/price/v3?ids=" + ",".join(addrs[:50]), headers=UA)
+        with urllib.request.urlopen(req, timeout=4) as r:
+            jup = json.loads(r.read().decode("utf-8"))
+        err = None
+    except Exception as e:
+        jup, err = {}, str(e)[:60]
+    t = now().isoformat(timespec="milliseconds")
+    for a in addrs:
+        pos = paper.state["open"].get(f"solana:{a}") or {}
+        j = jup.get(a) or {}
+        row = {"t": t, "token": a, "symbol": pos.get("symbol"), "entree": pos.get("entry_price"),
+               "stop": pos.get("stop"), "dex": (snaps.get(a) or {}).get("priceUsd"),
+               "jup": j.get("usdPrice"), "jup_bloc": j.get("blockId"), "jup_liq": j.get("liquidity"), "erreur": err}
+        append("prix", row)
+        PRIX_LOG.append(row)
+    del PRIX_LOG[:-600]
+    write_public("prix.json", PRIX_LOG)
+
+
 def fast_check(paper):
     """Contrôle rapide des positions OUVERTES uniquement (stops, TP, moonbag) entre deux grandes boucles.
     Les entrées en attente (règle de la bougie) et la découverte restent au rythme normal."""
@@ -177,6 +203,11 @@ def fast_check(paper):
     for chain in sorted({c for c, _ in keys}):
         addrs = [a for c, a in keys if c == chain]
         snaps = snapshot(chain, addrs)
+        if chain == "solana":
+            try:
+                comparer_prix(paper, addrs, snaps)
+            except Exception as e:
+                log(f"comparer_prix: {e}")
         for a in addrs:
             key = f"{chain}:{a}"
             if a in snaps and key in paper.state["open"]:     # donnée absente : on ne compte pas « disparu »
