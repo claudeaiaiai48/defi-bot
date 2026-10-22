@@ -33,6 +33,18 @@ def _rpc(method, params):
     raise RuntimeError(last or "RPC indisponible")
 
 
+def _pools_dexscreener(token):
+    """Adresses des pools (les paires v2 / Aerodrome détiennent une grosse part de l'offre ; elles ne comptent pas comme détenteurs)."""
+    try:
+        req = urllib.request.Request("https://api.dexscreener.com/latest/dex/tokens/" + token,
+                                     headers={"User-Agent": "defi-bot-observer/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            d = json.loads(r.read().decode())
+        return {(p.get("pairAddress") or "").lower() for p in d.get("pairs") or []}
+    except Exception:
+        return set()
+
+
 def holders_onchain(token, exclude=(), top_n=10):
     """Renvoie {"top10_pct", "holders", "blocs"} ou None si l'historique complet n'est pas lisible."""
     token = token.lower()
@@ -61,7 +73,7 @@ def holders_onchain(token, exclude=(), top_n=10):
         time.sleep(0.3)
     if not mint_seen:
         return None
-    skip = {ZERO, DEAD, token} | {a.lower() for a in exclude}
+    skip = {ZERO, DEAD, token} | {a.lower() for a in exclude} | _pools_dexscreener(token)
     pos = sorted((v for a, v in bal.items() if v > 0 and a not in skip), reverse=True)
     return {"top10_pct": round(100 * sum(pos[:top_n]) / supply, 1), "holders": len(pos),
             "blocs": bn - hi}
