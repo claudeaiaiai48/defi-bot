@@ -64,6 +64,28 @@ def discover(chains):
     return found
 
 
+def discover_gecko(chains, pages=1):
+    """Pools en tendance / nouveaux (GeckoTerminal, gratuit) : source « gecko », réservée aux portefeuilles de test."""
+    found = {}
+    for chain in chains:
+        for kind in ("trending_pools", "new_pools"):
+            for page in range(1, pages + 1):
+                try:
+                    req = urllib.request.Request(
+                        f"https://api.geckoterminal.com/api/v2/networks/{chain}/{kind}?page={page}",
+                        headers={**UA, "Accept": "application/json"})
+                    with urllib.request.urlopen(req, timeout=15) as r:
+                        data = json.loads(r.read().decode("utf-8")).get("data") or []
+                    for d in data:
+                        tid = (((d.get("relationships") or {}).get("base_token") or {}).get("data") or {}).get("id", "")
+                        if tid.startswith(chain + "_"):
+                            found.setdefault((chain, tid[len(chain) + 1:]), set()).add("gecko")
+                except Exception as e:
+                    log(f"gecko {chain} {kind}: {e}")
+                time.sleep(0.4)
+    return found
+
+
 def discover_clanker():
     """Derniers lancements Clanker sur Base (flux public clanker.world)."""
     try:
@@ -93,9 +115,10 @@ def snapshot(chain, addrs):
             continue
         by_token = {}
         for p in pairs or []:
-            by_token.setdefault(p.get("baseToken", {}).get("address"), []).append(p)
+            ba = p.get("baseToken", {}).get("address")
+            by_token.setdefault(ba.lower() if chain == "base" and ba else ba, []).append(p)
         for a in chunk:
-            p = best_pair(by_token.get(a))
+            p = best_pair(by_token.get(a.lower() if chain == "base" else a))
             if p:
                 out[a] = p
     return out
@@ -296,6 +319,11 @@ def main():
             if new:
                 with open(cl_path, "w", encoding="utf-8") as f:
                     json.dump(sorted(security.CLANKER)[-20000:], f)
+        gk = cfg.get("decouverte_gecko") or {}
+        if gk.get("enabled") and loops % 2 == 0:
+            lower = {(c, a.lower()): (c, a) for (c, a) in tracked}
+            for (c, a), src in discover_gecko(cfg["chains"], gk.get("pages", 1)).items():
+                found.setdefault(lower.get((c, a.lower()), (c, a)), set()).update(src)
         for key, src in found.items():
             entry = tracked.setdefault(key, {"first": t0, "sources": set()})
             entry["sources"] |= src
@@ -318,9 +346,10 @@ def main():
                 if (chain, addr) not in tracked:
                     continue
                 row = compact(chain, addr, p, tracked[(chain, addr)]["sources"])
-                append("observations", row)
+                if tracked[(chain, addr)]["sources"] != {"gecko"}:
+                    append("observations", row)
                 snaps += 1
-                if (chain, addr) not in signaled and is_signal(chain, p, cfg):
+                if (chain, addr) not in signaled and is_signal(chain, p, cfg) and (tracked[(chain, addr)]["sources"] - {"gecko"}):
                     signaled.add((chain, addr))
                     try:
                         row["social"] = social.enrich(chain, row, cfg)
