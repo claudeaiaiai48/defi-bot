@@ -21,8 +21,8 @@ def today():
 
 
 class Paper:
-    def __init__(self, data_dir, cfg):
-        self.path = os.path.join(data_dir, "paper_state.json")
+    def __init__(self, data_dir, cfg, name=""):
+        self.path = os.path.join(data_dir, f"paper_state_{name}.json" if name else "paper_state.json")
         self.cfg = cfg
         self.state = None
         if os.path.exists(self.path):
