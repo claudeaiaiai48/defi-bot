@@ -194,6 +194,35 @@ def comparer_prix(paper, addrs, snaps):
     write_public("prix.json", PRIX_LOG)
 
 
+def signaux_variantes(paper, chain, addr, p, row, cfg, events):
+    """Portefeuilles de test avec leurs propres seuils de signal / chaînes / sécurité (config paper.variantes.X)."""
+    for name, vp in paper.own_signal_variants().items():
+        if chain not in vp.cfg["chains"] or (chain, addr) in paper.seen[name]:
+            continue
+        if not is_signal(chain, p, {"signal": {**cfg["signal"], **vp.cfg["signal"]}}):
+            continue
+        scfg = {**cfg.get("security", {}), **(vp.cfg.get("securite") or {})}
+        sec = security.check(chain, addr, scfg) if scfg.get("enabled") else {"ok": True}
+        if sec.get("raisons") and all(r.startswith(("détenteurs pas encore indexés", "vérification impossible",
+                                                    "GoPlus sans données")) for r in sec["raisons"]):
+            continue                      # transitoire : on réessaiera
+        paper.seen[name].add((chain, addr))
+        n = len(events)
+        r = dict(row)
+        if sec["ok"]:
+            r["securite"] = sec.get("details")
+            strat = chain + ("-boost" if "boost" in r["sources"] else
+                             "-clanker" if addr.lower() in security.CLANKER else "-organique")
+            if (sec.get("details") or {}).get("avertissement"):
+                strat += "-createurvendu"
+            vp.signal(r, strat, events)
+        else:
+            events.append({"type": "rejet sécurité", "key": f"{chain}:{addr}", "symbol": r["symbol"],
+                           "raisons": sec["raisons"], "details": sec.get("details")})
+        for ev in events[n:]:
+            ev["wallet"] = name
+
+
 def fast_check(paper):
     """Contrôle rapide des positions OUVERTES uniquement (stops, TP, moonbag) entre deux grandes boucles.
     Les entrées en attente (règle de la bougie) et la découverte restent au rythme normal."""
@@ -328,6 +357,8 @@ def main():
                             events.append({"type": "rejet sécurité", "key": f"{chain}:{addr}",
                                            "symbol": row["symbol"], "raisons": sec["raisons"],
                                            "details": sec.get("details")})
+                if paper:
+                    signaux_variantes(paper, chain, addr, p, row, cfg, events)
         if paper:
             paper.risk_check(events)
         for ev in events:
