@@ -11,7 +11,7 @@ Sources gratuites, sans clé :
   Tokens Clanker : la règle du créateur ne s'applique pas (c'est la plateforme qui déploie).
 Si une source ne répond pas, le token est refusé (prudence).
 """
-import json, time, urllib.request
+import json, time, urllib.error, urllib.request
 
 UA = {"User-Agent": "defi-bot-observer/1.0", "Accept": "application/json"}
 _cache = {}
@@ -106,29 +106,46 @@ def _solana(token, cfg):
 
 def _base(token, cfg):
     reasons, det = [], {}
-    # 1. simulation achat/revente
-    hp = _get(f"https://api.honeypot.is/v2/IsHoneypot?address={token}&chainID=8453")
-    sim = hp.get("simulationResult") or {}
-    if not hp.get("simulationSuccess"):
-        reasons.append("simulation de revente impossible")
-    if (hp.get("honeypotResult") or {}).get("isHoneypot"):
-        reasons.append("honeypot")
-    tax = max(float(sim.get("buyTax") or 0), float(sim.get("sellTax") or 0),
-              float(sim.get("transferTax") or 0))
-    det["taxe_max_pct"] = tax
-    if tax > cfg["max_tax_pct"]:
-        reasons.append(f"taxe {tax} %")
+    clanker = token.lower() in CLANKER
+    # 1. simulation achat/revente (Honeypot.is ne connaît pas les pools Uniswap v4 : 404 « pair not found »)
+    hp = None
+    try:
+        hp = _get(f"https://api.honeypot.is/v2/IsHoneypot?address={token}&chainID=8453")
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            raise
+    if hp is not None:
+        sim = hp.get("simulationResult") or {}
+        if not hp.get("simulationSuccess") and not clanker:
+            reasons.append("simulation de revente impossible")
+        if (hp.get("honeypotResult") or {}).get("isHoneypot") and not clanker:
+            reasons.append("honeypot")
+        tax = max(float(sim.get("buyTax") or 0), float(sim.get("sellTax") or 0),
+                  float(sim.get("transferTax") or 0))
+        det["simulation"] = "Honeypot.is"
+    else:
+        tax = None
+        det["simulation"] = "indisponible (pool v4) : contrôles GoPlus seuls"
 
     # 2 et 3. détenteurs et créateur
     gp = _get(f"https://api.gopluslabs.io/api/v1/token_security/8453?contract_addresses={token.lower()}")
     r = next(iter((gp.get("result") or {}).values()), None)
+    if tax is None and r:
+        tax = max(float(r.get("buy_tax") or 0), float(r.get("sell_tax") or 0),
+                  float(r.get("transfer_tax") or 0)) * 100      # GoPlus : fraction (0.01 = 1 %)
+    tax = tax or 0.0
+    det["taxe_max_pct"] = tax
+    if tax > cfg["max_tax_pct"]:
+        reasons.append(f"taxe {tax} %")
     if not r:
         reasons.append("GoPlus sans données")
     else:
-        if r.get("is_honeypot") == "1" or r.get("cannot_sell_all") == "1":
-            reasons.append("revente bloquée (GoPlus)")
-        if r.get("is_mintable") == "1" or r.get("hidden_owner") == "1" or r.get("transfer_pausable") == "1":
-            reasons.append("contrat à risque (mint / propriétaire caché / pause)")
+        # Clanker : contrat standard sans mint ni admin, on ne garde que taxe + détenteurs
+        if not clanker:
+            if r.get("is_honeypot") == "1" or r.get("cannot_sell_all") == "1":
+                reasons.append("revente bloquée (GoPlus)")
+            if r.get("is_mintable") == "1" or r.get("hidden_owner") == "1" or r.get("transfer_pausable") == "1":
+                reasons.append("contrat à risque (mint / propriétaire caché / pause)")
         pools = {(x.get("pair") or "").lower() for x in r.get("dex") or []}
         pools |= {a.lower() for a in cfg.get("base_excluded_holders", [])}
         holders = [h for h in r.get("holders") or []
