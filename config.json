@@ -75,6 +75,7 @@
       ]
     ],
     "max_minutes_without_tp1": 90,
+    "fast_seconds": 10,
     "missing_loops_dead": 20,
     "post_exit_track": {"rugs": ["solana:CABBAGE"]}
   },
