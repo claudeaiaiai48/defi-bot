@@ -5,7 +5,7 @@ Surveille les nouveaux tokens Solana et Base via l'API publique DexScreener,
 enregistre des instantanés (volume, liquidité, transactions) et signale ceux
 qui passent les filtres de config.json. Sortie publique : /var/lib/defi-bot/public.
 """
-import json, os, threading, time, urllib.request, urllib.error
+import gzip, json, os, shutil, threading, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 from paper import Paper
 import security
@@ -124,6 +124,25 @@ def compact(chain, addr, p, sources):
     }
 
 
+def compresser_anciens(data_dir):
+    """Compresse (gzip, sans perte) les journaux .jsonl des jours précédents ; le fichier du jour reste intact."""
+    today = now().strftime("%Y-%m-%d")
+    try:
+        for fn in sorted(os.listdir(data_dir)):
+            if not fn.endswith(".jsonl") or today in fn:
+                continue
+            src, dst = os.path.join(data_dir, fn), os.path.join(data_dir, fn + ".gz")
+            if os.path.exists(dst):
+                continue
+            with open(src, "rb") as fi, gzip.open(dst + ".tmp", "wb", compresslevel=9) as fo:
+                shutil.copyfileobj(fi, fo)
+            os.replace(dst + ".tmp", dst)
+            os.remove(src)
+            log(f"journal compressé : {fn}")
+    except Exception as e:
+        log(f"compression journaux: {e}")
+
+
 def log(msg):
     print(f"{now().isoformat(timespec='seconds')} {msg}", flush=True)
 
@@ -184,6 +203,7 @@ def main():
     started = now().isoformat(timespec="seconds")
     loops = 0
     log("defi-bot observation démarré")
+    last_day = None
     try:
         tgwatch.start()
     except Exception as e:
@@ -192,6 +212,9 @@ def main():
     while True:
         cfg = load_config()
         t0 = time.time()
+        if last_day != now().strftime("%Y-%m-%d"):
+            last_day = now().strftime("%Y-%m-%d")
+            threading.Thread(target=compresser_anciens, args=(DATA,), daemon=True).start()
         pcfg = cfg.get("paper", {})
         if pcfg.get("enabled") and paper is None:
             paper = Paper(DATA, pcfg)
