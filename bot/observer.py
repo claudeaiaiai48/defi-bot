@@ -5,12 +5,13 @@ Surveille les nouveaux tokens Solana et Base via l'API publique DexScreener,
 enregistre des instantanés (volume, liquidité, transactions) et signale ceux
 qui passent les filtres de config.json. Sortie publique : /var/lib/defi-bot/public.
 """
-import json, os, time, urllib.request, urllib.error
+import json, os, threading, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 from paper import Paper
 import security
 import social
 import tgwatch
+import rugtools
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.environ.get("DEFIBOT_DATA", "/var/lib/defi-bot")
@@ -125,6 +126,26 @@ def compact(chain, addr, p, sources):
 
 def log(msg):
     print(f"{now().isoformat(timespec='seconds')} {msg}", flush=True)
+
+
+def collecter_outils(chain, p, rep, row, cfg):
+    """Collecte d'infos anti-rug (n'influence aucune décision). Le dictionnaire est créé tout de suite avec ses clés ;
+    le fil d'arrière-plan ne fait que remplacer des valeurs (le trade peut déjà le référencer)."""
+    ocfg = cfg.get("outils_collecte") or {}
+    if not ocfg.get("enabled"):
+        return
+    out = row["outils"] = {"statut": "en cours", "marche": None, "tardif": None, "createur": None, "reseau": None}
+
+    def run():
+        try:
+            helius = bool(ocfg.get("helius", True)) and chain == "solana" and rep is not None
+            ev = rugtools.evaluate(p, rep, {"max_wallets": ocfg.get("max_wallets", 10)}, with_helius=helius)
+            out["marche"], out["tardif"] = ev["marche"], ev["tardif"]
+            out["createur"], out["reseau"] = ev["createur"], ev["reseau"]
+            out["statut"] = "ok"
+        except Exception as e:
+            out["statut"] = f"erreur: {str(e)[:100]}"
+    threading.Thread(target=run, daemon=True).start()
 
 
 def fast_check(paper):
@@ -249,6 +270,7 @@ def main():
                             signaled.discard((chain, addr))   # on réessaiera (cache de 10 min)
                         if sec["ok"]:
                             row["securite"] = sec.get("details")      # gardé avec le trade
+                            collecter_outils(chain, p, security.REPORTS.get(addr), row, cfg)
                             if (sec.get("details") or {}).get("avertissement"):
                                 strat += "-createurvendu"   # pour comparer avec / sans créateur
                             paper.signal(row, strat, events)
