@@ -467,7 +467,12 @@ class Paper:
             "positions_ouvertes": [{"symbol": p["symbol"], "chain": p["chain"], "strategy": p["strategy"],
                                     "entree": p["entry_price"], "actuel": p["last_price"],
                                     "gain_pct": round((p["last_price"] / p["entry_price"] - 1) * 100, 1),
-                                    "tp1": p["tp1"], "tp2": p["tp2"], "url": p["url"]}
+                                    "tp1": p["tp1"], "tp2": p["tp2"], "url": p["url"],
+                                    "mise_usd": round(p.get("cost_usd", 0), 2),
+                                    "encaisse_usd": round(p.get("proceeds_usd", 0), 2),
+                                    "valeur_restante_usd": round(p["qty"] * p["last_price"], 2),
+                                    "ventes": [{"prix": e["price"], "usd": e["usd"], "raison": e["reason"], "t": int(e["t"])} for e in p.get("exits", [])],
+                                    "entree_t": int(p.get("entry_t", 0))}
                                    for p in st["open"].values()],
             "trades_clos": len(st["closed"]), "par_strategie": by,
             "derniers_trades": st["closed"][-20:][::-1],
