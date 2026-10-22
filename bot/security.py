@@ -154,8 +154,20 @@ def _base(token, cfg):
         top10 = 100 * sum(float(h.get("percent") or 0) for h in holders[:10])
         det["top10_hors_pool_pct"] = round(top10, 1)
         if not r.get("holders"):
-            det["detenteurs"] = "non indexés (GoPlus) : achat autorisé, donnée enregistrée comme inconnue"
-            det["top10_hors_pool_pct"] = None
+            oc = None
+            try:
+                import basetools
+                oc = basetools.holders_onchain(token, exclude=pools)
+            except Exception as e:
+                det["detenteurs_erreur"] = str(e)[:80]
+            if oc:
+                det["detenteurs"] = f"lus sur la chaîne ({oc['holders']} détenteurs)"
+                det["top10_hors_pool_pct"] = oc["top10_pct"]
+                if oc["top10_pct"] >= cfg["max_top10_pct"]:
+                    reasons.append(f"top 10 = {oc['top10_pct']:.1f} % (chaîne)")
+            else:
+                det["detenteurs"] = "non indexés (GoPlus) et illisibles sur la chaîne : achat autorisé, donnée inconnue"
+                det["top10_hors_pool_pct"] = None
         elif top10 >= cfg["max_top10_pct"]:
             reasons.append(f"top 10 = {top10:.1f} %")
         det["clanker"] = token.lower() in CLANKER
