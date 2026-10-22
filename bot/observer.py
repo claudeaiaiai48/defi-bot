@@ -127,6 +127,29 @@ def log(msg):
     print(f"{now().isoformat(timespec='seconds')} {msg}", flush=True)
 
 
+def fast_check(paper):
+    """Contrôle rapide des positions OUVERTES uniquement (stops, TP, moonbag) entre deux grandes boucles.
+    Les entrées en attente (règle de la bougie) et la découverte restent au rythme normal."""
+    keys = [tuple(k.split(":", 1)) for k in list(paper.state["open"])]
+    if not keys:
+        return
+    events = []
+    for chain in sorted({c for c, _ in keys}):
+        addrs = [a for c, a in keys if c == chain]
+        snaps = snapshot(chain, addrs)
+        for a in addrs:
+            key = f"{chain}:{a}"
+            if a in snaps and key in paper.state["open"]:     # donnée absente : on ne compte pas « disparu »
+                paper.update(key, snaps[a], events)
+    paper.risk_check(events)
+    for ev in events:
+        ev["t"] = now().isoformat(timespec="seconds")
+        append("paper", ev)
+        log(f"PAPER {ev}")
+    paper.save()
+    write_public("paper.json", paper.summary())
+
+
 def main():
     os.makedirs(PUBLIC, exist_ok=True)
     cl_path = os.path.join(DATA, "clanker.json")
@@ -252,7 +275,16 @@ def main():
         })
         write_public("signals.json", recent_signals)
         write_public("securite.json", sec_log)
-        time.sleep(max(5, cfg["poll_seconds"] - (time.time() - t0)))
+        fast = pcfg.get("fast_seconds") or 0
+        deadline = t0 + cfg["poll_seconds"]
+        if paper and fast:
+            while time.time() + fast < deadline:
+                time.sleep(fast)
+                try:
+                    fast_check(paper)
+                except Exception as e:
+                    log(f"fast_check: {e}")
+        time.sleep(max(5, deadline - time.time()))
 
 
 if __name__ == "__main__":
