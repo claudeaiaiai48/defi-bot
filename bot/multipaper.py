@@ -12,6 +12,7 @@ class MultiPaper:
         self.data_dir = data_dir
         self.main = Paper(data_dir, pcfg)
         self.variants = {}
+        self.seen = {}          # variante -> {(chaine, adresse)} déjà évalués avec ses propres seuils de signal
         self._sync(pcfg)
 
     # ----- configuration -----
@@ -31,6 +32,7 @@ class MultiPaper:
                 self.variants[name].cfg = vcfg
             else:
                 self.variants[name] = Paper(self.data_dir, vcfg, name=name)
+                self.seen[name] = set()
 
     @property
     def cfg(self):
@@ -90,8 +92,14 @@ class MultiPaper:
                 p.update_suivi(key, pair, events)
             self._tag(events, n, name)
 
+    def own_signal_variants(self):
+        """Variantes qui ont leurs propres seuils de signal (config paper.variantes.X.signal)."""
+        return {n: p for n, p in self.variants.items() if p.cfg.get("signal")}
+
     def signal(self, row, strat, events):
         for name, p in self._all():
+            if name and p.cfg.get("signal"):
+                continue          # cette variante reçoit ses propres signaux
             n = len(events)
             p.signal(row, strat, events)
             self._tag(events, n, name)
