@@ -93,6 +93,7 @@
       "solana"
     ]
   },
+  "outils_collecte": {"enabled": true, "helius": true, "max_wallets": 10},
   "clanker": {
     "enabled": true
   },
