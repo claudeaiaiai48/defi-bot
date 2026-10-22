@@ -154,7 +154,8 @@ def _base(token, cfg):
         top10 = 100 * sum(float(h.get("percent") or 0) for h in holders[:10])
         det["top10_hors_pool_pct"] = round(top10, 1)
         if not r.get("holders"):
-            reasons.append("détenteurs pas encore indexés")
+            det["detenteurs"] = "non indexés (GoPlus) : achat autorisé, donnée enregistrée comme inconnue"
+            det["top10_hors_pool_pct"] = None
         elif top10 >= cfg["max_top10_pct"]:
             reasons.append(f"top 10 = {top10:.1f} %")
         det["clanker"] = token.lower() in CLANKER
