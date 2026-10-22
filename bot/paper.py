@@ -286,6 +286,15 @@ class Paper:
                                              "high": p["high"], "t": time.time()}])[-100:]
             events.append({"type": "pas de repli", "key": key, "symbol": p["row"]["symbol"]})
 
+    @staticmethod
+    def _outils_entree(pair):
+        """Collecte d'infos (aucun effet sur les décisions) : état du marché au moment précis de l'achat."""
+        try:
+            from rugtools import market_pressure, late_entry
+            return {"marche": market_pressure(pair), "tardif": late_entry(pair)}
+        except Exception as e:
+            return {"erreur": str(e)[:100]}
+
     def _buy(self, key, p, price, pair, events):
         c, st = self.cfg, self.state
         chain = p["row"]["chain"]
@@ -304,6 +313,7 @@ class Paper:
             "stop": price * (1 + c["stop_initial_pct"] / 100),
             "peak": price, "last_price": price, "exits": [],
             "social": row.get("social"), "securite": row.get("securite"),
+            "outils": row.get("outils"), "outils_entree": self._outils_entree(pair),
         }
         events.append({"type": "achat", "key": key, "symbol": row["symbol"],
                        "strategy": p["strategy"], "price": price, "usd": size,
@@ -328,7 +338,8 @@ class Paper:
         pos = self.state["open"].pop(key)
         pnl = pos["proceeds_usd"] - pos["cost_usd"]
         trade = {k: pos.get(k) for k in ("chain", "token", "symbol", "strategy", "url",
-                                         "entry_t", "entry_price", "cost_usd", "exits", "social", "securite")}
+                                         "entry_t", "entry_price", "cost_usd", "exits", "social", "securite",
+                                         "outils", "outils_entree")}
         trade.update({"close_t": time.time(), "close_reason": reason,
                       "proceeds_usd": round(pos["proceeds_usd"], 2), "pnl_usd": round(pnl, 2),
                       "pnl_pct": round(100 * pnl / pos["cost_usd"], 1)})
