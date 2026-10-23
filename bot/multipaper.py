@@ -12,6 +12,7 @@ class MultiPaper:
         self.data_dir = data_dir
         self.main = Paper(data_dir, pcfg)
         self.variants = {}
+        self.trans = {}         # (variante, chaîne, adresse) -> dernier événement « sécurité transitoire »
         self.seen = {}          # variante -> {(chaine, adresse)} déjà évalués avec ses propres seuils de signal
         self._sync(pcfg)
 
