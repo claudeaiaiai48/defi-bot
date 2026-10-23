@@ -205,6 +205,18 @@ class Paper:
     def fee(self, chain):
         return (self.cfg["fee_pct"][chain] + self.cfg["slippage_pct"]) / 100
 
+    def exec_factor(self, usd, liq, side):
+        """Impact de marché réaliste (pool x*y=k) : écart entre prix observé et prix réellement obtenu.
+        Achat : on paie (1 + mise/réserve) plus cher ; vente : on reçoit 1/(1 + valeur/réserve) de moins.
+        réserve = liquidité/2 ; extra_pct = latence / mouvement de prix entre observation et exécution."""
+        m = self.cfg.get("impact_marche") or {}
+        if not m.get("enabled"):
+            return 1.0
+        x = float(m.get("extra_pct", 1.0)) / 100
+        if liq and liq > 0:
+            x += usd / (liq / 2.0)
+        return (1 + x) if side == "buy" else 1 / (1 + x)
+
     def capital(self):
         return sum(self.cfg["reserves"].values())
 
@@ -216,6 +228,7 @@ class Paper:
     def equity(self, chain=None):
         cash = self.state["cash"]
         value = sum(p["qty"] * p["last_price"] * (1 - self.fee(p["chain"]))
+                    * self.exec_factor(p["qty"] * p["last_price"], p.get("liq"), "sell")
                     for p in self.state["open"].values() if chain in (None, p["chain"]))
         return (sum(cash.values()) if chain is None else cash[chain]) + value
 
@@ -301,7 +314,9 @@ class Paper:
         c, st = self.cfg, self.state
         chain = p["row"]["chain"]
         size = self.position_size(chain)
-        qty = size * (1 - self.fee(chain)) / price
+        liq = float(((pair or {}).get("liquidity") or {}).get("usd") or 0)
+        imp = self.exec_factor(size, liq, "buy")
+        qty = size * (1 - self.fee(chain)) / (price * imp)
         st["cash"][chain] -= size
         st["entered"].append(key)
         st["trades_per_day"][today()] = st["trades_per_day"].get(today(), 0) + 1
@@ -310,7 +325,7 @@ class Paper:
             "chain": row["chain"], "token": row["token"], "symbol": row["symbol"],
             "strategy": p["strategy"], "url": row.get("url"),
             "entry_t": time.time(), "entry_price": price, "cost_usd": size,
-            "qty": qty, "qty0": qty, "proceeds_usd": 0.0, "sells": 0,
+            "qty": qty, "qty0": qty, "proceeds_usd": 0.0, "sells": 0, "liq": liq,
             "tp1": False, "tp2": False, "moon_steps": [], "missing": 0,
             "stop": price * (1 + c["stop_initial_pct"] / 100),
             "peak": price, "last_price": price, "exits": [],
@@ -319,7 +334,8 @@ class Paper:
         }
         events.append({"type": "achat", "key": key, "symbol": row["symbol"],
                        "strategy": p["strategy"], "price": price, "usd": size,
-                       "repli_pct": round((1 - price / p["high"]) * 100, 1)})
+                       "repli_pct": round((1 - price / p["high"]) * 100, 1),
+                       "impact_achat_pct": round((imp - 1) * 100, 2), "liquidite_usd": round(liq)})
 
     # ---------- sorties ----------
     def _sell(self, key, frac_of_initial, price, reason, events, all_=False, qty=None):
@@ -327,7 +343,8 @@ class Paper:
         if qty is None:
             qty = pos["qty"] if all_ else pos["qty0"] * frac_of_initial
         qty = min(pos["qty"], qty)
-        usd = qty * price * (1 - self.fee(pos["chain"])) if price > 0 else 0.0
+        usd = (qty * price * (1 - self.fee(pos["chain"])) * self.exec_factor(qty * price, pos.get("liq"), "sell")
+               if price > 0 else 0.0)
         pos["qty"] -= qty
         pos["proceeds_usd"] += usd
         pos["sells"] += 1
@@ -364,6 +381,7 @@ class Paper:
         if price <= 0:
             return
         pos["last_price"] = price
+        pos["liq"] = float((pair.get("liquidity") or {}).get("usd") or pos.get("liq") or 0)
         pos["peak"] = max(pos["peak"], price)
         gain = (price / pos["entry_price"] - 1) * 100
         mult = price / pos["entry_price"]
