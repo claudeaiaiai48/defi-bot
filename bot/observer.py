@@ -225,6 +225,7 @@ def comparer_prix(paper, addrs, snaps):
         PRIX_LOG.append(row)
     del PRIX_LOG[:-600]
     write_public("prix.json", PRIX_LOG)
+    return {a: (jup.get(a) or {}).get("usdPrice") for a in addrs}
 
 
 def signaux_variantes(paper, chain, addr, p, row, cfg, events):
@@ -266,15 +267,16 @@ def fast_check(paper):
     for chain in sorted({c for c, _ in keys}):
         addrs = [a for c, a in keys if c == chain]
         snaps = snapshot(chain, addrs)
+        jup = {}
         if chain == "solana":
             try:
-                comparer_prix(paper, addrs, snaps)
+                jup = comparer_prix(paper, addrs, snaps) or {}
             except Exception as e:
                 log(f"comparer_prix: {e}")
         for a in addrs:
             key = f"{chain}:{a}"
             if a in snaps:     # donnée absente : on ne compte pas « disparu »
-                paper.update_open(key, snaps[a], events)
+                paper.update_open(key, snaps[a], events, jup.get(a))
     paper.risk_check(events)
     for ev in events:
         ev["t"] = now().isoformat(timespec="seconds")
