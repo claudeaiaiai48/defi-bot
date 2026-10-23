@@ -36,10 +36,20 @@ def get(path):
         return json.loads(r.read().decode("utf-8"))
 
 
+EV_LOG = []        # derniers événements des portefeuilles (publiés dans evenements.json pour l'analyse)
+
+
 def append(name, obj):
     day = now().strftime("%Y-%m-%d")
     with open(os.path.join(DATA, f"{name}-{day}.jsonl"), "a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+    if name == "paper":
+        EV_LOG.append(obj)
+        del EV_LOG[:-300]
+        try:
+            write_public("evenements.json", EV_LOG)
+        except Exception:
+            pass
 
 
 def write_public(name, obj):
