@@ -86,7 +86,9 @@
       "F": {"label": "F - signaux larges + stop -10 % + sans createur vendu", "signal": {"min_volume_h1_usd": 8000, "min_liquidity_usd": 5000, "min_txns_h1": 80, "solana_dex_ids": [], "base_dex_ids": []}, "stop_initial_pct": -10, "exclure_strategies": ["createurvendu"]},
       "G": {"label": "G - signaux du principal, stop -10 %, TP1 +40 % (45 %), sans createur vendu", "stop_initial_pct": -10, "tp1_pct": 40, "tp1_sell_frac": 0.45, "tp2_sell_frac": 0.45, "exclure_strategies": ["createurvendu"]},
       "H": {"label": "H - comme G avec prix Jupiter pour les stops", "stop_initial_pct": -10, "tp1_pct": 40, "tp1_sell_frac": 0.45, "tp2_sell_frac": 0.45, "exclure_strategies": ["createurvendu"], "prix_jupiter": true},
-      "I": {"label": "I - comme C (stop -10 %) avec prix Jupiter", "stop_initial_pct": -10, "prix_jupiter": true}
+      "I": {"label": "I - comme C (stop -10 %) avec prix Jupiter", "stop_initial_pct": -10, "prix_jupiter": true},
+      "J": {"label": "J - stop -10 %, prix Jupiter, signaux larges", "stop_initial_pct": -10, "prix_jupiter": true, "signal": {"min_volume_h1_usd": 8000, "min_liquidity_usd": 5000, "min_txns_h1": 80, "solana_dex_ids": [], "base_dex_ids": []}},
+      "K": {"label": "K - stop -5 %, prix Jupiter", "stop_initial_pct": -5, "prix_jupiter": true}
     }
   },
   "security": {
