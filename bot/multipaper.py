@@ -74,11 +74,14 @@ class MultiPaper:
                     seen.append(k)
         return seen
 
-    def update_open(self, key, pair, events):
+    def update_open(self, key, pair, events, jup_price=None):
         for name, p in self._all():
             if key in p.state["open"]:
                 n = len(events)
-                p.update(key, pair, events)
+                use = pair
+                if jup_price and pair and p.cfg.get("prix_jupiter"):
+                    use = {**pair, "priceUsd": str(jup_price)}     # portefeuille de test : prix Jupiter (plus rapide)
+                p.update(key, use, events)
                 self._tag(events, n, name)
 
     def dispatch(self, key, pair, events):
