@@ -279,6 +279,55 @@
           "solana_dex_ids": [],
           "base_dex_ids": []
         }
+      },
+      "M": {
+        "label": "M - comme le principal mais stop apres TP1 a 0 % (break-even) au lieu de +8 %",
+        "stop_after_tp1_pct": 0
+      },
+      "N": {
+        "label": "N - comme le principal mais stop apres TP1 a -10 %",
+        "stop_after_tp1_pct": -10
+      },
+      "O": {
+        "label": "O - comme le principal mais ventes plus petites : TP1 35 %, TP2 30 %, moonbag 35 %",
+        "tp1_sell_frac": 0.35,
+        "tp2_sell_frac": 0.3,
+        "moonbag_frac": 0.35,
+        "moonbag_ladder": [
+          [
+            5,
+            0.34
+          ],
+          [
+            20,
+            0.33
+          ],
+          [
+            100,
+            0.33
+          ]
+        ]
+      },
+      "P": {
+        "label": "P - O + stop apres TP1 a -10 %",
+        "tp1_sell_frac": 0.35,
+        "tp2_sell_frac": 0.3,
+        "moonbag_frac": 0.35,
+        "moonbag_ladder": [
+          [
+            5,
+            0.34
+          ],
+          [
+            20,
+            0.33
+          ],
+          [
+            100,
+            0.33
+          ]
+        ],
+        "stop_after_tp1_pct": -10
       }
     }
   },
