@@ -329,6 +329,22 @@
         ],
         "stop_after_tp1_pct": -10
       }
+    },
+    "injections": [
+      {
+        "id": "2026-10-23-apport-300",
+        "repartition": {
+          "solana": 150,
+          "base": 150
+        }
+      }
+    ],
+    "refill_par_chaine": {
+      "seuil_usd": 50,
+      "montant_usd": {
+        "solana": 150,
+        "base": 150
+      }
     }
   },
   "security": {
