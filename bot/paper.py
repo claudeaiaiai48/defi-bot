@@ -229,6 +229,8 @@ class Paper:
             return
         if key in st["open"] or key in st["pending"] or key in st["entered"]:
             return
+        if any(x in strategy for x in c.get("exclure_strategies", [])):
+            return                                  # portefeuilles de test : stratégies écartées
         st["pending"][key] = {"row": row, "strategy": strategy, "t": time.time(),
                               "high": price, "prev": price, "last": price}
         events.append({"type": "attente", "key": key, "symbol": row["symbol"],
