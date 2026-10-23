@@ -283,6 +283,7 @@ class Paper:
             p["prev"], p["last"] = p["last"], price
             p["high"] = max(p["high"], price)
             drop = round((1 - price / p["high"]) * 100, 6)
+            p["maxdrop"] = max(p.get("maxdrop", 0), drop)      # mesure seule : plus forte chute vue pendant l'attente
             if (c["pullback_min_pct"] <= drop <= c["pullback_max_pct"]
                     and candle <= c["green_candle_max_pct"]):
                 blocked = self._can_enter(p["row"]["chain"])
@@ -298,8 +299,10 @@ class Paper:
             st["pending"].pop(key)
             st["missed"] = (st["missed"] + [{"key": key, "symbol": p["row"]["symbol"],
                                              "signal_price": float(p["row"]["price_usd"]),
-                                             "high": p["high"], "t": time.time()}])[-100:]
-            events.append({"type": "pas de repli", "key": key, "symbol": p["row"]["symbol"]})
+                                             "high": p["high"], "t": time.time(),
+                                             "chute_max_pct": round(p.get("maxdrop", 0), 1)}])[-100:]
+            events.append({"type": "pas de repli", "key": key, "symbol": p["row"]["symbol"],
+                           "chute_max_pct": round(p.get("maxdrop", 0), 1)})
 
     @staticmethod
     def _outils_entree(pair):
