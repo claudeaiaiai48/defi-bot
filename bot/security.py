@@ -28,7 +28,7 @@ CLANKER = set()   # adresses (minuscules) des tokens Clanker vus sur Base
 
 
 def check(chain, token, cfg):
-    key = (chain, token)
+    key = (chain, token, json.dumps(cfg, sort_keys=True, default=str))     # une variante peut avoir d'autres seuils
     hit = _cache.get(key)
     if hit and time.time() - hit[0] < cfg.get("cache_minutes", 10) * 60:
         return hit[1]
