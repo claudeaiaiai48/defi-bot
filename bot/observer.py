@@ -239,6 +239,11 @@ def signaux_variantes(paper, chain, addr, p, row, cfg, events):
         sec = security.check(chain, addr, scfg) if scfg.get("enabled") else {"ok": True}
         if sec.get("raisons") and all(r.startswith(("détenteurs pas encore indexés", "vérification impossible",
                                                     "GoPlus sans données")) for r in sec["raisons"]):
+            k = (name, chain, addr)
+            if time.time() - paper.trans.get(k, 0) > 600:
+                paper.trans[k] = time.time()
+                events.append({"type": "sécurité transitoire", "key": f"{chain}:{addr}", "symbol": row["symbol"],
+                               "raisons": sec["raisons"], "wallet": name})
             continue                      # transitoire : on réessaiera
         paper.seen[name].add((chain, addr))
         n = len(events)
