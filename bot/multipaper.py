@@ -18,7 +18,7 @@ class MultiPaper:
 
     # ----- configuration -----
     def _vcfg(self, name, pcfg, over):
-        c = copy.deepcopy({k: v for k, v in pcfg.items() if k != "variantes"})
+        c = copy.deepcopy({k: v for k, v in pcfg.items() if k not in ("variantes", "injections", "refill_par_chaine")})
         c.update({k: v for k, v in over.items() if k not in ("enabled", "label")})
         c["reset_id"] = over.get("reset_id", f"variante-{name}-2026-10-23")
         c["post_exit_track"] = {"reasons": []}          # pas de suivi après sortie sur les variantes
