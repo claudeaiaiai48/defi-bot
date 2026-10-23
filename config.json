@@ -328,6 +328,15 @@
           ]
         ],
         "stop_after_tp1_pct": -10
+      },
+      "Q": {
+        "label": "Q - comme le principal mais repli accepte jusqu'a -30 % (au lieu de -15 %) : ne saute plus la bande",
+        "pullback_max_pct": 30
+      },
+      "R": {
+        "label": "R - Q + stop initial -10 %",
+        "pullback_max_pct": 30,
+        "stop_initial_pct": -10
       }
     },
     "injections": [
