@@ -48,7 +48,7 @@
       "solana": 1.75,
       "base": 1.0
     },
-    "slippage_pct": 0.5,
+    "slippage_pct": 0.5, "impact_marche": {"enabled": true, "extra_pct": 1.0},
     "pullback_min_pct": 10,
     "pullback_max_pct": 15,
     "green_candle_max_pct": 15,
