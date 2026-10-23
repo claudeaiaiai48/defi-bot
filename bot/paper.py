@@ -428,8 +428,34 @@ class Paper:
         inj = self.state.setdefault("injected", dict(self.cfg["reserves"]))
         return sum(inj.values()) if chain is None else inj.get(chain, 0)
 
+    def _ajouter(self, split, raison, events):
+        """Ajoute du capital fictif par chaîne ({chaîne: montant}) ; la perte totale reste documentée."""
+        st = self.state
+        eq = self.equity()
+        inj = st.setdefault("injected", dict(self.cfg["reserves"]))
+        for ch, a in split.items():
+            st["cash"][ch] += a
+            inj[ch] = inj.get(ch, 0) + a
+        added = sum(split.values())
+        perte = round(self.injected() - added - eq, 2)
+        st.setdefault("refills", []).append({
+            "t": time.time(), "valeur_avant_usd": round(eq, 2), "ajoute_usd": added, "raison": raison,
+            "capital_total_injecte_usd": round(self.injected(), 2), "perte_totale_usd": perte})
+        events.append({"type": "recharge", "raison": raison, "valeur_avant_usd": round(eq, 2),
+                       "ajoute_usd": added, "perte_totale_avant_recharge_usd": perte})
+
     def risk_check(self, events):
         c, st = self.cfg, self.state
+        for inj_ in c.get("injections") or []:          # apports ponctuels demandés par l'utilisateur (une seule fois)
+            done = st.setdefault("injections_done", [])
+            if inj_["id"] not in done:
+                done.append(inj_["id"])
+                self._ajouter(inj_["repartition"], f"apport {inj_['id']}", events)
+        rc = c.get("refill_par_chaine")                 # recharge d'une chaîne qui passe sous le seuil
+        if rc:
+            for ch in c["reserves"]:
+                if self.equity(ch) < rc["seuil_usd"]:
+                    self._ajouter({ch: rc["montant_usd"][ch]}, f"recharge {ch} sous {rc['seuil_usd']} $", events)
         rf = c.get("refill")
         if rf and self.equity() < rf["seuil_usd"]:
             # paper trading : le compte est rechargé ; la perte totale reste documentée
