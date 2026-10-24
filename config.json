@@ -337,6 +337,118 @@
         "label": "R - Q + stop initial -10 %",
         "pullback_max_pct": 30,
         "stop_initial_pct": -10
+      },
+      "T": {
+        "label": "T - clone de E, reserve 3000, plafonds 100 $ / 1 % liquidite",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 3000
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": null,
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "position_max_usd": 100,
+        "position_max_pct_liquidite": 1
+      },
+      "U": {
+        "label": "U - clone de E, reserve 3000, sans plafond",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 3000
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": null,
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        }
+      },
+      "V": {
+        "label": "V - clone de E, 300 $ avec coffre (450 / 300)",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": null,
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "coffre": {
+          "seuil_usd": 450,
+          "garder_usd": 300
+        }
+      },
+      "S": {
+        "label": "S - tokens moyens (liq >= 500k), Solana+Base",
+        "reserves": {
+          "solana": 500,
+          "base": 500
+        },
+        "refill": null,
+        "position_pct": 10,
+        "signal": {
+          "min_volume_h1_usd": 100000,
+          "min_liquidity_usd": 500000,
+          "min_txns_h1": 300,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "stop_initial_pct": -8,
+        "tp1_pct": 15,
+        "tp1_sell_frac": 0.4,
+        "tp2_pct": 40,
+        "tp2_sell_frac": 0.3,
+        "moonbag_frac": 0.3,
+        "entry_window_min": 10,
+        "pullback_min_pct": 3,
+        "pullback_max_pct": 15
       }
     },
     "injections": [
