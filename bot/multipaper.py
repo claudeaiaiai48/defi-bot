@@ -67,10 +67,23 @@ class MultiPaper:
                     out.append(k)
         return out
 
-    def open_keys(self):
+    def open_keys(self, rapide=None):
         seen = []
         for _, p in self._all():
+            if rapide is not None and bool(p.cfg.get("rapide")) != rapide:
+                continue
             for k in p.state["open"]:
+                if k not in seen:
+                    seen.append(k)
+        return seen
+
+    def rapide_keys(self):
+        """Positions ouvertes et entrées en attente des portefeuilles « rapides » (contrôlés à haute fréquence)."""
+        seen = []
+        for _, p in self._all():
+            if not p.cfg.get("rapide"):
+                continue
+            for k in list(p.state["open"]) + list(p.state["pending"]):
                 if k not in seen:
                     seen.append(k)
         return seen
@@ -85,13 +98,18 @@ class MultiPaper:
                 p.update(key, use, events)
                 self._tag(events, n, name)
 
-    def dispatch(self, key, pair, events):
+    def dispatch(self, key, pair, events, jup_price=None, rapide=None):
         for name, p in self._all():
+            if rapide is not None and bool(p.cfg.get("rapide")) != rapide:
+                continue
             n = len(events)
+            use = pair
+            if jup_price and pair and p.cfg.get("rapide") and p.cfg.get("prix_jupiter"):
+                use = {**pair, "priceUsd": str(jup_price)}      # portefeuille rapide : prix Jupiter aussi pour les entrées
             if key in p.state["open"]:
-                p.update(key, pair, events)
+                p.update(key, use, events)
             elif key in p.state["pending"]:
-                p.update_pending(key, pair, events)
+                p.update_pending(key, use, events)
             elif key in p.state.get("suivi", {}):
                 p.update_suivi(key, pair, events)
             self._tag(events, n, name)
