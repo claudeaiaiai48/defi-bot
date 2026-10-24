@@ -390,6 +390,18 @@ class Paper:
         price = float(pair.get("priceUsd") or 0)
         if price <= 0:
             return
+        # garde-fou : on n'accepte pas une hausse venant d'un pool quasi vide ou d'un saut isolé
+        liq_new = float((pair.get("liquidity") or {}).get("usd") or 0)
+        ref_liq = float(pos.get("liq") or 0)
+        last = pos.get("last_price") or pos["entry_price"]
+        if price > last:
+            if liq_new < max(2000.0, 0.3 * ref_liq):
+                pos["prix_ignores"] = pos.get("prix_ignores", 0) + 1
+                return
+            if price > 3 * last and not (pos.get("saut_prix") and price > 2.5 * last):
+                pos["saut_prix"] = price      # à confirmer par une 2e lecture
+                return
+        pos["saut_prix"] = None
         pos["last_price"] = price
         pos["liq"] = float((pair.get("liquidity") or {}).get("usd") or pos.get("liq") or 0)
         pos["peak"] = max(pos["peak"], price)
