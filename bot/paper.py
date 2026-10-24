@@ -395,7 +395,7 @@ class Paper:
         ref_liq = float(pos.get("liq") or 0)
         last = pos.get("last_price") or pos["entry_price"]
         if price > last:
-            if liq_new < max(2000.0, 0.3 * ref_liq):
+            if liq_new < max(2500.0, 0.3 * ref_liq):
                 pos["prix_ignores"] = pos.get("prix_ignores", 0) + 1
                 return
             if price > 3 * last and not (pos.get("saut_prix") and price > 2.5 * last):
