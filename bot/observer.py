@@ -13,6 +13,10 @@ import security
 import social
 import tgwatch
 import rugtools
+try:
+    import flux
+except Exception:      # module de mesure facultatif
+    flux = None
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.environ.get("DEFIBOT_DATA", "/var/lib/defi-bot")
@@ -341,6 +345,11 @@ def main():
         tgwatch.start()
     except Exception as e:
         log(f"telegram: {e}")
+    if flux:
+        try:
+            flux.start()
+        except Exception as e:
+            log(f"flux: {e}")
     paper = None
     while True:
         cfg = load_config()
@@ -374,6 +383,11 @@ def main():
             for (c, a), src in discover_gecko(cfg["chains"], gk.get("pages", 1)).items():
                 found.setdefault(lower.get((c, a.lower()), (c, a)), set()).update(src)
         for key, src in found.items():
+            if flux and key not in tracked:
+                try:
+                    flux.noter_decouverte(key[0], key[1], t0)
+                except Exception:
+                    pass
             entry = tracked.setdefault(key, {"first": t0, "sources": set()})
             entry["sources"] |= src
         horizon = cfg["track_hours"] * 3600
@@ -459,6 +473,8 @@ def main():
         })
         write_public("signals.json", recent_signals)
         write_public("securite.json", sec_log)
+        if flux:
+            write_public("flux.json", flux.resume())
         fast = pcfg.get("fast_seconds") or 0
         rap = pcfg.get("fast_rapide_seconds") or 0
         deadline = t0 + cfg["poll_seconds"]
