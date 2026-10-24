@@ -109,9 +109,19 @@ def discover_clanker():
         return []
 
 
+BONS_DEX = {"pumpswap", "raydium", "meteora", "orca", "uniswap", "aerodrome", "baseswap", "pancakeswap"}
+
+
 def best_pair(pairs):
+    """Meilleur pool d'un token : on écarte les pools quasi vides (prix non fiable),
+    on préfère les DEX reconnus, puis la plus grande liquidité."""
     pairs = [p for p in pairs or [] if p.get("liquidity", {}).get("usd")]
-    return max(pairs, key=lambda p: p["liquidity"]["usd"]) if pairs else None
+    if not pairs:
+        return None
+    top = max(p["liquidity"]["usd"] for p in pairs)
+    ok = [p for p in pairs if p["liquidity"]["usd"] >= max(2000.0, 0.3 * top)] or pairs
+    bons = [p for p in ok if p.get("dexId") in BONS_DEX] or ok
+    return max(bons, key=lambda p: p["liquidity"]["usd"])
 
 
 def snapshot(chain, addrs):
