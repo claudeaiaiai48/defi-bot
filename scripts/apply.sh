@@ -56,6 +56,10 @@ python3 -c "import telethon" 2>/dev/null || {
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3-pip >/dev/null 2>&1 || true
   pip3 install -q --break-system-packages telethon >/dev/null 2>&1 || true
 }
+python3 -c "import websocket" 2>/dev/null || {
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3-pip >/dev/null 2>&1 || true
+  pip3 install -q --break-system-packages websocket-client >/dev/null 2>&1 || true
+}
 systemctl daemon-reload
 systemctl enable -q defi-bot defi-bot-web defi-bot-update.timer
 systemctl restart defi-bot defi-bot-web
