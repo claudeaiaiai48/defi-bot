@@ -272,10 +272,28 @@ def signaux_variantes(paper, chain, addr, p, row, cfg, events):
             ev["wallet"] = name
 
 
-def fast_check(paper):
+def jup_prix(addrs):
+    """Prix Jupiter (Solana) sans journalisation : {adresse: prix}. Erreur réseau -> dictionnaire partiel."""
+    out = {}
+    for i in range(0, len(addrs), 50):
+        chunk = addrs[i:i + 50]
+        try:
+            req = urllib.request.Request("https://lite-api.jup.ag/price/v3?ids=" + ",".join(chunk), headers=UA)
+            with urllib.request.urlopen(req, timeout=4) as r:
+                jup = json.loads(r.read().decode("utf-8"))
+            for a in chunk:
+                v = (jup.get(a) or {}).get("usdPrice")
+                if v:
+                    out[a] = v
+        except Exception as e:
+            log(f"jup_prix: {e}")
+    return out
+
+
+def fast_check(paper, rapide_only=False):
     """Contrôle rapide des positions OUVERTES uniquement (stops, TP, moonbag) entre deux grandes boucles.
     Les entrées en attente (règle de la bougie) et la découverte restent au rythme normal."""
-    keys = [tuple(k.split(":", 1)) for k in paper.open_keys()]
+    keys = [tuple(k.split(":", 1)) for k in (paper.rapide_keys() if rapide_only else paper.open_keys())]
     if not keys:
         return
     events = []
@@ -285,20 +303,24 @@ def fast_check(paper):
         jup = {}
         if chain == "solana":
             try:
-                jup = comparer_prix(paper, addrs, snaps) or {}
+                jup = (jup_prix(addrs) if rapide_only else comparer_prix(paper, addrs, snaps)) or {}
             except Exception as e:
                 log(f"comparer_prix: {e}")
         for a in addrs:
             key = f"{chain}:{a}"
             if a in snaps:     # donnée absente : on ne compte pas « disparu »
-                paper.update_open(key, snaps[a], events, jup.get(a))
+                if rapide_only:
+                    paper.dispatch(key, snaps[a], events, jup.get(a), rapide=True)
+                else:
+                    paper.update_open(key, snaps[a], events, jup.get(a))
     paper.risk_check(events)
     for ev in events:
         ev["t"] = now().isoformat(timespec="seconds")
         append("paper", ev)
         log(f"PAPER {ev}")
-    paper.save()
-    paper.publish(write_public)
+    if events or not rapide_only:
+        paper.save()
+        paper.publish(write_public)
 
 
 def main():
@@ -364,11 +386,14 @@ def main():
                 addrs += [a for (c, a) in paper.watched_keys() if c == chain and a not in addrs]
             snaps_chain = snapshot(chain, addrs)
             if paper:
+                jupx = {}
+                if chain == "solana" and any(p.cfg.get("rapide") and p.cfg.get("prix_jupiter") for _, p in paper._all()):
+                    jupx = jup_prix([a for (c, a) in paper.watched_keys() if c == chain])
                 for (c, a) in paper.watched_keys():
                     if c != chain:
                         continue
                     key = f"{c}:{a}"
-                    paper.dispatch(key, snaps_chain.get(a), events)
+                    paper.dispatch(key, snaps_chain.get(a), events, jupx.get(a))
             for addr, p in snaps_chain.items():
                 if (chain, addr) not in tracked:
                     continue
@@ -435,12 +460,19 @@ def main():
         write_public("signals.json", recent_signals)
         write_public("securite.json", sec_log)
         fast = pcfg.get("fast_seconds") or 0
+        rap = pcfg.get("fast_rapide_seconds") or 0
         deadline = t0 + cfg["poll_seconds"]
         if paper and fast:
-            while time.time() + fast < deadline:
-                time.sleep(fast)
+            tick = min(fast, rap) if rap else fast
+            last_full = time.time()
+            while time.time() + tick < deadline:
+                time.sleep(tick)
                 try:
-                    fast_check(paper)
+                    if time.time() - last_full >= fast - 0.5 or not rap:
+                        last_full = time.time()
+                        fast_check(paper)
+                    if rap:
+                        fast_check(paper, rapide_only=True)
                 except Exception as e:
                     log(f"fast_check: {e}")
         time.sleep(max(5, deadline - time.time()))
