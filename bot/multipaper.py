@@ -118,10 +118,19 @@ class MultiPaper:
         for _, p in self._all():
             p.save()
 
+    @staticmethod
+    def _export(p):
+        """Tous les trades clos (champs utiles à l'analyse statistique) — lecture seule."""
+        keep = ("chain", "token", "symbol", "strategy", "entry_t", "entry_price", "cost_usd", "exits",
+                "close_t", "close_reason")
+        return [{k: t.get(k) for k in keep} for t in p.state["closed"]]
+
     def publish(self, write_public):
         write_public("paper.json", self.main.summary())
+        write_public("trades_principal.json", self._export(self.main))
         for name, p in self.variants.items():
             s = p.summary()
             s["variante"] = name
             s.pop("sorties_suivies", None)
             write_public(f"paper_{name}.json", s)
+            write_public(f"trades_{name}.json", self._export(p))
