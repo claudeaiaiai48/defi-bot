@@ -266,13 +266,20 @@ class Paper:
     def gas(self, chain):
         return (self.cfg.get("gas_reserve_usd") or {}).get(chain, 0)
 
-    def position_size(self, chain):
+    def position_size(self, chain, liq=None):
         """Mise = position_pct % du capital de la chaîne (cash + positions), plafonnée au cash disponible moins le gas."""
         pct = self.cfg.get("position_pct")
         wanted = self.equity(chain) * pct / 100 if pct else self.cfg["position_usd"]
         # si la réserve ne couvre pas la mise, on investit le reste, en gardant un peu pour le gas
         available = self.state["cash"][chain] - self.gas(chain)
-        return round(max(0.0, min(wanted, available)), 2)
+        size = max(0.0, min(wanted, available))
+        mx = self.cfg.get("position_max_usd")                    # plafond absolu par trade (option, test)
+        if mx:
+            size = min(size, mx)
+        pl = self.cfg.get("position_max_pct_liquidite")          # plafond en % de la liquidité du pool (option, test)
+        if pl and liq:
+            size = min(size, liq * pl / 100)
+        return round(size, 2)
 
     def update_pending(self, key, pair, events):
         c, st = self.cfg, self.state
@@ -316,8 +323,8 @@ class Paper:
     def _buy(self, key, p, price, pair, events):
         c, st = self.cfg, self.state
         chain = p["row"]["chain"]
-        size = self.position_size(chain)
         liq = float(((pair or {}).get("liquidity") or {}).get("usd") or 0)
+        size = self.position_size(chain, liq)
         imp = self.exec_factor(size, liq, "buy")
         qty = size * (1 - self.fee(chain)) / (price * imp)
         st["cash"][chain] -= size
@@ -456,6 +463,16 @@ class Paper:
             for ch in c["reserves"]:
                 if self.equity(ch) < rc["seuil_usd"]:
                     self._ajouter({ch: rc["montant_usd"][ch]}, f"recharge {ch} sous {rc['seuil_usd']} $", events)
+        cf = c.get("coffre")                            # option (wallets de test) : l'excédent de cash sort du jeu
+        if cf and self.equity() > cf["seuil_usd"]:
+            cash_tot = sum(st["cash"].values())
+            libre = cash_tot - sum(self.gas(ch) for ch in st["cash"])
+            exc = min(self.equity() - cf["garder_usd"], libre)
+            if exc > 1 and cash_tot > 0:
+                for ch in st["cash"]:
+                    st["cash"][ch] -= exc * st["cash"][ch] / cash_tot
+                st["coffre"] = round(st.get("coffre", 0) + exc, 2)
+                events.append({"type": "coffre", "ajoute_usd": round(exc, 2), "total_usd": st["coffre"]})
         rf = c.get("refill")
         if rf and self.equity() < rf["seuil_usd"]:
             # paper trading : le compte est rechargé ; la perte totale reste documentée
@@ -480,7 +497,7 @@ class Paper:
     # ---------- résumé public ----------
     def summary(self):
         st, c = self.state, self.cfg
-        equity = self.equity()
+        equity = self.equity() + st.get("coffre", 0)     # le coffre reste compté dans la valeur et le résultat
         by = {}
         chains = {ch: {"reserve_depart": r, "capital_injecte": round(self.injected(ch), 2),
                        "valeur": round(self.equity(ch), 2),
@@ -508,7 +525,7 @@ class Paper:
         return {
             "capital_depart": self.capital(), "valeur": round(equity, 2),
             "pnl_total_pct": round(100 * (equity / injected - 1), 2),
-            "recharges": recharges,
+            "recharges": recharges, "coffre_usd": round(st.get("coffre", 0), 2),
             "par_chaine": chains, "arret_risque": st["halted"],
             "trades_aujourdhui": st["trades_per_day"].get(today(), 0),
             "en_attente_de_repli": [{"symbol": p["row"]["symbol"], "chain": p["row"]["chain"], "plus_haut": p["high"],
