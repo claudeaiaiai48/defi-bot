@@ -119,7 +119,7 @@ def best_pair(pairs):
     if not pairs:
         return None
     top = max(p["liquidity"]["usd"] for p in pairs)
-    ok = [p for p in pairs if p["liquidity"]["usd"] >= max(2000.0, 0.3 * top)] or pairs
+    ok = [p for p in pairs if p["liquidity"]["usd"] >= max(2500.0, 0.3 * top)] or pairs
     bons = [p for p in ok if p.get("dexId") in BONS_DEX] or ok
     return max(bons, key=lambda p: p["liquidity"]["usd"])
 
