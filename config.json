@@ -642,6 +642,56 @@
         "stop_ordre": {
           "glissement_pct": 3
         }
+      },
+      "SOL1": {
+        "label": "SOL1 - clone du principal (Solana), mise divisee par 2 si top10 > 15 % ou createur detenteur",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "mise_fragile": {
+          "top10_pct": 15,
+          "createur": true,
+          "facteur": 0.5
+        }
+      },
+      "SOL2": {
+        "label": "SOL2 - clone du principal (Solana), sortie anticipee sur faiblesse (liquidite -30 %, vagues de ventes)",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "sortie_faiblesse": {
+          "liq_chute_pct": 30,
+          "min_ventes_m5": 15,
+          "ventes_sur_achats": 2.5
+        }
+      },
+      "SOL3": {
+        "label": "SOL3 - clone du principal (Solana), mise fragile + sortie anticipee sur faiblesse",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "mise_fragile": {
+          "top10_pct": 15,
+          "createur": true,
+          "facteur": 0.5
+        },
+        "sortie_faiblesse": {
+          "liq_chute_pct": 30,
+          "min_ventes_m5": 15,
+          "ventes_sur_achats": 2.5
+        }
       }
     },
     "injections": [
