@@ -325,6 +325,12 @@ class Paper:
         chain = p["row"]["chain"]
         liq = float(((pair or {}).get("liquidity") or {}).get("usd") or 0)
         size = self.position_size(chain, liq)
+        mf = c.get("mise_fragile")          # mise réduite sur les tokens à structure fragile (gros détenteurs / créateur)
+        if mf:
+            sec = p["row"].get("securite") or {}
+            t10 = sec.get("top10_hors_pool_pct")
+            if (t10 is not None and t10 > mf.get("top10_pct", 20)) or (sec.get("createur_detient") and mf.get("createur", True)):
+                size = round(size * mf.get("facteur", 0.5), 2)
         imp = self.exec_factor(size, liq, "buy")
         qty = size * (1 - self.fee(chain)) / (price * imp)
         st["cash"][chain] -= size
@@ -335,7 +341,7 @@ class Paper:
             "chain": row["chain"], "token": row["token"], "symbol": row["symbol"],
             "strategy": p["strategy"], "url": row.get("url"),
             "entry_t": time.time(), "entry_price": price, "cost_usd": size,
-            "qty": qty, "qty0": qty, "proceeds_usd": 0.0, "sells": 0, "liq": liq,
+            "qty": qty, "qty0": qty, "proceeds_usd": 0.0, "sells": 0, "liq": liq, "liq_entree": liq,
             "tp1": False, "tp2": False, "moon_steps": [], "missing": 0,
             "stop": price * (1 + c["stop_initial_pct"] / 100),
             "peak": price, "last_price": price, "exits": [],
@@ -377,6 +383,14 @@ class Paper:
         events.append({"type": "clôture", "key": key, "symbol": pos["symbol"],
                        "pnl_usd": trade["pnl_usd"], "pnl_pct": trade["pnl_pct"], "reason": reason})
 
+    def _px_stop(self, pos, price):
+        """Simulation d'un ordre déclencheur sur la chaîne (option stop_ordre) : exécution au prix du stop moins un
+        glissement fixe, au lieu du prix observé après la chute. Borne haute (optimiste en cas de trou de prix)."""
+        o = self.cfg.get("stop_ordre")
+        if o and pos.get("stop") and price < pos["stop"]:
+            return max(price, pos["stop"] * (1 - o.get("glissement_pct", 3) / 100))
+        return price
+
     def update(self, key, pair, events):
         c, pos = self.cfg, self.state["open"][key]
         if pair is None:
@@ -405,12 +419,25 @@ class Paper:
         pos["last_price"] = price
         pos["liq"] = float((pair.get("liquidity") or {}).get("usd") or pos.get("liq") or 0)
         pos["peak"] = max(pos["peak"], price)
+        sf = c.get("sortie_faiblesse")      # sortie anticipée sur signes de faiblesse (chute de liquidité, vagues de ventes)
+        if sf and pos["qty"] > 0 and pos.get("liq_entree"):
+            liq0, liq_now = float(pos["liq_entree"]), liq_new
+            m5 = (pair.get("txns") or {}).get("m5") or {}
+            ach, ven = m5.get("buys", 0), m5.get("sells", 0)
+            raison = None
+            if liq_now and liq_now < liq0 * (1 - sf.get("liq_chute_pct", 30) / 100):
+                raison = f"faiblesse : liquidité -{round((1 - liq_now / liq0) * 100)} %"
+            elif ven >= sf.get("min_ventes_m5", 15) and ven > sf.get("ventes_sur_achats", 2.5) * max(ach, 1):
+                raison = f"faiblesse : {ven} ventes pour {ach} achats (5 min)"
+            if raison:
+                self._sell(key, 1, price, raison, events, all_=True)
+                return self._close(key, "faiblesse", events)
         gain = (price / pos["entry_price"] - 1) * 100
         mult = price / pos["entry_price"]
 
         if not pos["tp1"]:
             if price <= pos["stop"]:
-                self._sell(key, 1, price, f"stop dur {c['stop_initial_pct']} %", events, all_=True)
+                self._sell(key, 1, self._px_stop(pos, price), f"stop dur {c['stop_initial_pct']} %", events, all_=True)
                 return self._close(key, "stop", events)
             if gain >= c["tp1_pct"]:
                 self._sell(key, c["tp1_sell_frac"], price, f"TP1 +{c['tp1_pct']} %", events)
@@ -425,7 +452,7 @@ class Paper:
 
         if not pos["tp2"]:
             if price <= pos["stop"]:
-                self._sell(key, 1, price, f"stop +{c['stop_after_tp1_pct']} % (moonbag comprise)",
+                self._sell(key, 1, self._px_stop(pos, price), f"stop +{c['stop_after_tp1_pct']} % (moonbag comprise)",
                            events, all_=True)
                 return self._close(key, "stop_tp1", events)
             if gain >= c["tp2_pct"]:
