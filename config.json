@@ -506,7 +506,14 @@
           "solana": 300,
           "base": 300
         },
-        "refill": null,
+        "refill": {
+          "seuil_usd": 150,
+          "montant_usd": 300,
+          "repartition": {
+            "solana": 150,
+            "base": 150
+          }
+        },
         "position_usd": 10,
         "position_pct": 5,
         "position_min_usd": 3,
