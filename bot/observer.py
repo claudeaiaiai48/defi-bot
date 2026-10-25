@@ -44,6 +44,11 @@ EV_LOG = []        # derniers événements des portefeuilles (publiés dans even
 
 
 def append(name, obj):
+    if name == "paper" and obj.get("type") == "achat":
+        try:
+            mesurer_quote(obj)
+        except Exception:
+            pass
     day = now().strftime("%Y-%m-%d")
     with open(os.path.join(DATA, f"{name}-{day}.jsonl"), "a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
@@ -212,6 +217,39 @@ def collecter_outils(chain, p, rep, row, cfg):
             out["statut"] = "ok"
         except Exception as e:
             out["statut"] = f"erreur: {str(e)[:100]}"
+    threading.Thread(target=run, daemon=True).start()
+
+
+_QUOTES_VUES = set()
+
+
+def mesurer_quote(ev):
+    """Mesure seule : impact réel d'une mise Solana (devis Jupiter, lecture seule, rien n'est signé ni envoyé)
+    comparé à notre modèle de glissement -> quotes.jsonl (public). Sert à calibrer la simulation."""
+    key = ev.get("key") or ""
+    if not key.startswith("solana:") or not ev.get("usd"):
+        return
+    clef = (key, round(ev["usd"]), str(ev.get("t"))[:16])
+    if clef in _QUOTES_VUES:
+        return
+    _QUOTES_VUES.add(clef)
+
+    def run():
+        try:
+            mint = key.split(":", 1)[1]
+            usdc = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+            url = (f"https://lite-api.jup.ag/swap/v1/quote?inputMint={usdc}&outputMint={mint}"
+                   f"&amount={int(ev['usd'] * 1e6)}&slippageBps=1000")
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=6) as r:
+                q = json.loads(r.read().decode("utf-8"))
+            row = {"t": ev.get("t"), "wallet": ev.get("wallet") or "principal", "symbol": ev.get("symbol"),
+                   "usd": ev.get("usd"), "liq": ev.get("liquidite_usd"), "modele_pct": ev.get("impact_achat_pct"),
+                   "quote_impact_pct": round(float(q.get("priceImpactPct") or 0) * 100, 3),
+                   "route": [(x.get("swapInfo") or {}).get("label") for x in (q.get("routePlan") or [])][:3]}
+            with open(os.path.join(PUBLIC, "quotes.jsonl"), "a", encoding="utf-8") as f:
+                f.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
+        except Exception as e:
+            log(f"quote: {e}")
     threading.Thread(target=run, daemon=True).start()
 
 
