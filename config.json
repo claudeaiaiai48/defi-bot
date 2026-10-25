@@ -434,9 +434,9 @@
         "refill": null,
         "position_pct": 10,
         "signal": {
-          "min_volume_h1_usd": 100000,
-          "min_liquidity_usd": 500000,
-          "min_txns_h1": 300,
+          "min_volume_h1_usd": 50000,
+          "min_liquidity_usd": 150000,
+          "min_txns_h1": 200,
           "solana_dex_ids": [],
           "base_dex_ids": []
         },
