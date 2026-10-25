@@ -495,6 +495,34 @@
         "refill": null,
         "rapide": true,
         "prix_jupiter": true
+      },
+      "YOYO": {
+        "label": "YOYO - beaucoup de trades : signaux larges, achat immediat, petites mises, memes sorties que le principal",
+        "chains": [
+          "solana",
+          "base"
+        ],
+        "reserves": {
+          "solana": 300,
+          "base": 300
+        },
+        "refill": null,
+        "position_usd": 10,
+        "position_pct": 5,
+        "position_min_usd": 3,
+        "max_open_per_chain": 40,
+        "max_trades_per_day": 500,
+        "pullback_min_pct": 0,
+        "pullback_max_pct": 100,
+        "green_candle_max_pct": 100,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        }
       }
     },
     "injections": [
