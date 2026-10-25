@@ -215,6 +215,22 @@ def collecter_outils(chain, p, rep, row, cfg):
     threading.Thread(target=run, daemon=True).start()
 
 
+def prix_public(rows):
+    """Journal durable Jupiter vs DexScreener (prix_log.jsonl, public, survit aux redémarrages ; ~8 Mo max)."""
+    try:
+        p = os.path.join(PUBLIC, "prix_log.jsonl")
+        if os.path.exists(p) and os.path.getsize(p) > 8000000:
+            with open(p, encoding="utf-8") as f:
+                lines = f.readlines()
+            with open(p, "w", encoding="utf-8") as f:
+                f.writelines(lines[len(lines) // 2:])
+        with open(p, "a", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, separators=(",", ":")) + "\n")
+    except Exception as e:
+        log(f"prix_public: {e}")
+
+
 PRIX_LOG = []      # derniers relevés Jupiter vs DexScreener (publiés dans prix.json pour l'analyse)
 
 
@@ -238,6 +254,8 @@ def comparer_prix(paper, addrs, snaps):
         append("prix", row)
         PRIX_LOG.append(row)
     del PRIX_LOG[:-600]
+    prix_public([{"t": round(time.time(), 1), "s": r["symbol"], "k": r["token"][:6], "j": r["jup"], "d": r["dex"]}
+                 for r in PRIX_LOG[-len(addrs):] if r.get("jup") and r.get("dex")])
     write_public("prix.json", PRIX_LOG)
     return {a: (jup.get(a) or {}).get("usdPrice") for a in addrs}
 
