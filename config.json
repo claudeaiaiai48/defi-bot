@@ -530,6 +530,118 @@
           "solana_dex_ids": [],
           "base_dex_ids": []
         }
+      },
+      "E1": {
+        "label": "E1 - clone de E, mise divisee par 2 si top10 > 15 % ou createur detenteur",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "mise_fragile": {
+          "top10_pct": 15,
+          "createur": true,
+          "facteur": 0.5
+        }
+      },
+      "E2": {
+        "label": "E2 - clone de E, sortie anticipee sur faiblesse (liquidite -30 %, vagues de ventes)",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "sortie_faiblesse": {
+          "liq_chute_pct": 30,
+          "min_ventes_m5": 15,
+          "ventes_sur_achats": 2.5
+        }
+      },
+      "E3": {
+        "label": "E3 - clone de E, stops simules en ordre declencheur (prix du stop -3 %), borne haute",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "stop_ordre": {
+          "glissement_pct": 3
+        }
       }
     },
     "injections": [
