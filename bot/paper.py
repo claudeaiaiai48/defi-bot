@@ -407,7 +407,7 @@ class Paper:
         pnl = pos["proceeds_usd"] - pos["cost_usd"]
         trade = {k: pos.get(k) for k in ("chain", "token", "symbol", "strategy", "url",
                                          "entry_t", "entry_price", "cost_usd", "exits", "social", "securite",
-                                         "outils", "outils_entree")}
+                                         "outils", "outils_entree", "origine")}
         trade.update({"close_t": time.time(), "close_reason": reason,
                       "proceeds_usd": round(pos["proceeds_usd"], 2), "pnl_usd": round(pnl, 2),
                       "pnl_pct": round(100 * pnl / pos["cost_usd"], 1)})
