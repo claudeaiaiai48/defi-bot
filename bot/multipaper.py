@@ -140,7 +140,7 @@ class MultiPaper:
     def _export(p):
         """Tous les trades clos (champs utiles à l'analyse statistique) — lecture seule."""
         keep = ("chain", "token", "symbol", "strategy", "entry_t", "entry_price", "cost_usd", "exits",
-                "close_t", "close_reason")
+                "close_t", "close_reason", "origine")
         return [{k: t.get(k) for k in keep} for t in p.state["closed"]]
 
     def publish(self, write_public):
