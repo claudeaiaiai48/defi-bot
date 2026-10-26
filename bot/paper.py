@@ -495,10 +495,25 @@ class Paper:
 
         # moonbag : aucun stop, aucune limite de temps, ventes aux multiples
         moon0 = pos["qty0"] * c["moonbag_frac"]
-        for m, frac in c["moonbag_ladder"]:
+        mb = c.get("moonbag_intelligente")     # poche moonbag gérée (trailing / liquidité / durée) au lieu de la laisser mourir
+        for m, frac in ((mb or {}).get("ladder") or c["moonbag_ladder"]):
             if mult >= m and m not in pos["moon_steps"]:
                 pos["moon_steps"].append(m)
                 self._sell(key, 0, price, f"moonbag x{m}", events, qty=moon0 * frac)
+        if mb and pos["qty"] > pos["qty0"] * 1e-9:
+            t0 = pos.setdefault("moon_t0", time.time())
+            ref = max(pos.get("liq_moon_ref", 0), liq_new)
+            pos["liq_moon_ref"] = ref
+            raison = None
+            if mb.get("trail_pct") and price <= pos["peak"] * (1 - mb["trail_pct"] / 100):
+                raison = f"moonbag : -{mb['trail_pct']} % depuis le plus haut"
+            elif mb.get("liq_chute_pct") and liq_new and liq_new < ref * (1 - mb["liq_chute_pct"] / 100):
+                raison = f"moonbag : liquidité -{round((1 - liq_new / ref) * 100)} %"
+            elif mb.get("max_min") and time.time() - t0 > mb["max_min"] * 60:
+                raison = f"moonbag : {mb['max_min']} min écoulées"
+            if raison:
+                self._sell(key, 1, price, raison, events, all_=True)
+                return self._close(key, "moonbag intelligente", events)
         if pos["qty"] <= pos["qty0"] * 1e-9:
             self._close(key, "moonbag vendue", events)
 
