@@ -12,8 +12,10 @@ réglées dans config.json :
 - capital : deux réserves séparées (Solana, Base), frais propres à chaque chaîne ;
 - risque : 3 positions max, 10 trades par jour max, arrêt des entrées à -30 % du capital total.
 """
-import json, os, time
+import json, os, time, urllib.request
 from datetime import datetime, timezone
+
+_ORIGINES = {}      # adresse -> infos de création déjà cherchées (évite de rappeler Blockscout)
 
 
 def today():
@@ -312,6 +314,36 @@ class Paper:
                            "chute_max_pct": round(p.get("maxdrop", 0), 1)})
 
     @staticmethod
+    def _origine(row, pair):
+        """Collecte seule : d'où vient le token (sources de découverte, DEX, type de lanceur). Sur Base, le créateur
+        est cherché une fois par token (Blockscout, lecture seule, délai court) puis mémorisé."""
+        addr = (row.get("token") or "").lower()
+        o = {"sources": row.get("sources"), "dex": (pair or {}).get("dexId"),
+             "labels": (pair or {}).get("labels"), "paire_creee": (pair or {}).get("pairCreatedAt"),
+             "lanceur": "b20" if addr.startswith("0xb2000000000000000000") else None}
+        if row.get("chain") == "base" and addr:
+            if addr not in _ORIGINES:
+                extra = {}
+                try:
+                    h = {"User-Agent": "defi-bot-observer/1.0"}
+                    j = json.loads(urllib.request.urlopen(urllib.request.Request(
+                        "https://base.blockscout.com/api/v2/addresses/" + addr, headers=h), timeout=3).read().decode("utf-8"))
+                    c = (j.get("creator_address_hash") or "").lower()
+                    extra["createur"] = c or None
+                    if c:
+                        k = json.loads(urllib.request.urlopen(urllib.request.Request(
+                            "https://base.blockscout.com/api/v2/addresses/" + c, headers=h), timeout=3).read().decode("utf-8"))
+                        extra["createur_contrat"] = bool(k.get("is_contract"))
+                        extra["createur_nom"] = k.get("name")
+                        if not o["lanceur"]:
+                            extra["lanceur"] = k.get("name") or ("contrat lanceur" if k.get("is_contract") else "portefeuille")
+                except Exception as e:
+                    extra["erreur"] = str(e)[:60]
+                _ORIGINES[addr] = extra
+            o.update({k: v for k, v in _ORIGINES[addr].items() if not (k == "lanceur" and o["lanceur"])})
+        return o
+
+    @staticmethod
     def _outils_entree(pair):
         """Collecte d'infos (aucun effet sur les décisions) : état du marché au moment précis de l'achat."""
         try:
@@ -347,6 +379,7 @@ class Paper:
             "peak": price, "last_price": price, "exits": [],
             "social": row.get("social"), "securite": row.get("securite"),
             "outils": row.get("outils"), "outils_entree": self._outils_entree(pair),
+            "origine": self._origine(row, pair),
         }
         events.append({"type": "achat", "key": key, "symbol": row["symbol"],
                        "strategy": p["strategy"], "price": price, "usd": size,
