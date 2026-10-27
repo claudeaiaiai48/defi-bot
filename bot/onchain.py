@@ -107,7 +107,7 @@ def vente_possible(pool_id, token, prix_usd, age_min, usd=30):
     False = le pool refuse (vide, retiré, bloqué), None = on ne sait pas (hooks, erreur RPC, jeton non reconnu).
     Limite : le quoter ne rejoue pas les transferts du jeton, donc un blocage dans le contrat du jeton n'est pas vu."""
     c = _VENTE.get(pool_id)
-    if c and time.time() - c[0] < 90:
+    if c and time.time() - c[0] < 300:
         return c[1]
     k = _cle(pool_id, age_min)
     if not k or int(k["hooks"], 16):
@@ -143,7 +143,7 @@ def vente_token(token, destination):
     fait une vente. True = au moins un détenteur peut transférer ; False = le transfert est refusé pour au moins deux
     détenteurs et réussit pour aucun (blocage, pause, liste noire, vente interdite) ; None = pas assez d'information."""
     c = _TR.get(token)
-    if c and time.time() - c[0] < 120:
+    if c and time.time() - c[0] < 600:
         return c[1]
     bn = _bloc()
     logs = _rpc("eth_getLogs", [{"address": token, "fromBlock": hex(bn - 1200), "toBlock": "latest",
@@ -186,7 +186,7 @@ def taxe_vente(token, destination):
     """Pourcentage prélevé quand un détenteur transfère une partie de son solde vers le pool (destination) : on lit le
     solde du pool avant et après le transfert simulé. Renvoie None si aucun détenteur ne peut être testé."""
     c = _TX.get(token)
-    if c and time.time() - c[0] < 120:
+    if c and time.time() - c[0] < 600:
         return c[1]
     bn = _bloc()
     logs = _rpc("eth_getLogs", [{"address": token, "fromBlock": hex(bn - 1200), "toBlock": "latest",
@@ -229,7 +229,7 @@ def taxe_achat(token, destination):
     """Pourcentage prélevé quand le pool (destination) envoie des jetons à un acheteur : transfert simulé du pool vers
     une adresse neuve (eth_simulateV1), solde de cette adresse avant et après. None si le test est impossible."""
     c = _TA.get(token)
-    if c and time.time() - c[0] < 120:
+    if c and time.time() - c[0] < 600:
         return c[1]
     p = lambda x: x[2:].rjust(64, "0")
     neuve = "0x00000000000000000000000000000000000b0b01"
