@@ -319,6 +319,10 @@ class Paper:
                         events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                        "reason": f"honeypot probable : {e['n']} swaps, {e['minorite']} dans le sens opposé"})
                         return
+                if oc and oc.get("quote_vente") and p["row"]["chain"] == "base" and self._oc_vente(pair) is False:
+                    events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                   "reason": "vente impossible : le quoter v4 refuse la vente simulée"})
+                    return
                 self._buy(key, p, price, pair, events)
                 return
         if time.time() - p["t"] > c["entry_window_min"] * 60:
@@ -339,6 +343,20 @@ class Paper:
         try:
             import onchain
             return onchain.etat(pid)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _oc_vente(pair, usd=30):
+        """Simulation de vente d'environ usd dollars (quoter v4) : True/False, ou None si indéterminé."""
+        pid = (pair.get("pairAddress") or "") if pair else ""
+        if not (pid.startswith("0x") and len(pid) == 66):
+            return None
+        try:
+            import onchain
+            age = (time.time() * 1000 - float(pair.get("pairCreatedAt") or 0)) / 60000
+            return onchain.vente_possible(pid, (pair.get("baseToken") or {}).get("address") or "",
+                                          float(pair.get("priceUsd") or 0), age, usd)
         except Exception:
             return None
 
@@ -487,6 +505,10 @@ class Paper:
                                    "part_retiree": e["retrait_ratio"]})
                     pos["qty"] = 0
                     return self._close(key, "retrait de liquidité", events)
+                if oc.get("quote_vente") and self._oc_vente(pair) is False:
+                    events.append({"type": "vente impossible", "key": key, "symbol": pos.get("symbol")})
+                    pos["qty"] = 0
+                    return self._close(key, "vente impossible", events)
                 if oc.get("mort_min") and e["dernier_swap_min"] >= oc["mort_min"]:
                     events.append({"type": "pool mort", "key": key, "symbol": pos.get("symbol"),
                                    "dernier_swap_min": e["dernier_swap_min"]})
