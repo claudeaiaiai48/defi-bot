@@ -312,6 +312,13 @@ class Paper:
                         events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                        "reason": f"rug probable : lot de {sg.get('lot')} adresses, opérateur connu {sg.get('operateur')}"})
                         return
+                oc = c.get("onchain")               # wallet de test : refus des pools dont les swaps vont dans un seul sens (honeypot probable)
+                if oc and oc.get("sens_unique_min_swaps") and p["row"]["chain"] == "base":
+                    e = self._oc(pair) or {}
+                    if e.get("n", 0) >= oc["sens_unique_min_swaps"] and e["minorite"] <= 0.05 * e["n"]:
+                        events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                       "reason": f"honeypot probable : {e['n']} swaps, {e['minorite']} dans le sens opposé"})
+                        return
                 self._buy(key, p, price, pair, events)
                 return
         if time.time() - p["t"] > c["entry_window_min"] * 60:
@@ -322,6 +329,18 @@ class Paper:
                                              "chute_max_pct": round(p.get("maxdrop", 0), 1)}])[-100:]
             events.append({"type": "pas de repli", "key": key, "symbol": p["row"]["symbol"],
                            "chute_max_pct": round(p.get("maxdrop", 0), 1)})
+
+    @staticmethod
+    def _oc(pair):
+        """Etat on-chain d'un pool Uniswap v4 (module onchain) ; None si le pool n'est pas v4 ou si le RPC échoue."""
+        pid = (pair.get("pairAddress") or "") if pair else ""
+        if not (pid.startswith("0x") and len(pid) == 66):
+            return None
+        try:
+            import onchain
+            return onchain.etat(pid)
+        except Exception:
+            return None
 
     @staticmethod
     def _origine(row, pair):
@@ -459,6 +478,20 @@ class Paper:
         price = float(pair.get("priceUsd") or 0)
         if price <= 0:
             return
+        oc = c.get("onchain")          # wallet de test : sortie sur pool mort (plus de swap) ou retrait de liquidité, vu on-chain
+        if oc and pos.get("chain") == "base" and pos["qty"] > 0:
+            e = self._oc(pair)
+            if e:
+                if oc.get("retrait_ratio") and e.get("retrait_ratio") is not None and e["retrait_ratio"] >= oc["retrait_ratio"]:
+                    events.append({"type": "retrait de liquidité", "key": key, "symbol": pos.get("symbol"),
+                                   "part_retiree": e["retrait_ratio"]})
+                    pos["qty"] = 0
+                    return self._close(key, "retrait de liquidité", events)
+                if oc.get("mort_min") and e["dernier_swap_min"] >= oc["mort_min"]:
+                    events.append({"type": "pool mort", "key": key, "symbol": pos.get("symbol"),
+                                   "dernier_swap_min": e["dernier_swap_min"]})
+                    pos["qty"] = 0
+                    return self._close(key, "pool mort", events)
         # garde-fou : on n'accepte pas une hausse venant d'un pool quasi vide ou d'un saut isolé
         liq_new = float((pair.get("liquidity") or {}).get("usd") or 0)
         ref_liq = float(pos.get("liq") or 0)
