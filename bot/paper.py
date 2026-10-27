@@ -293,8 +293,11 @@ class Paper:
             p["high"] = max(p["high"], price)
             drop = round((1 - price / p["high"]) * 100, 6)
             p["maxdrop"] = max(p.get("maxdrop", 0), drop)      # mesure seule : plus forte chute vue pendant l'attente
+            p["low"] = min(p.get("low") or price, price)
+            rb = c.get("rebond_pct")        # option de test : on n'achète qu'après une remontée depuis le plus bas (évite d'acheter pendant la chute)
+            rebond_ok = (not rb) or (price >= p["low"] * (1 + rb / 100) and candle > 0)
             if (c["pullback_min_pct"] <= drop <= c["pullback_max_pct"]
-                    and candle <= c["green_candle_max_pct"]):
+                    and candle <= c["green_candle_max_pct"] and rebond_ok):
                 blocked = self._can_enter(p["row"]["chain"])
                 if blocked:
                     st["pending"].pop(key)
