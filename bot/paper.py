@@ -323,6 +323,10 @@ class Paper:
                     events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                    "reason": "vente impossible : le quoter v4 refuse la vente simulée"})
                     return
+                if oc and oc.get("test_transfert") and p["row"]["chain"] == "base" and self._oc_transfert(pair) is False:
+                    events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                   "reason": "honeypot probable : le jeton refuse le transfert vers le pool (simulation)"})
+                    return
                 self._buy(key, p, price, pair, events)
                 return
         if time.time() - p["t"] > c["entry_window_min"] * 60:
@@ -343,6 +347,18 @@ class Paper:
         try:
             import onchain
             return onchain.etat(pid)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _oc_transfert(pair):
+        """Test de transfert du jeton vers le pool (eth_call depuis un détenteur récent) : True/False, ou None."""
+        try:
+            import onchain
+            pid = pair.get("pairAddress") or ""
+            tok = (pair.get("baseToken") or {}).get("address") or ""
+            dest = onchain.POOLMANAGER if len(pid) == 66 else pid
+            return onchain.vente_token(tok, dest) if tok and dest else None
         except Exception:
             return None
 
@@ -498,6 +514,10 @@ class Paper:
             return
         oc = c.get("onchain")          # wallet de test : sortie sur pool mort (plus de swap) ou retrait de liquidité, vu on-chain
         if oc and pos.get("chain") == "base" and pos["qty"] > 0:
+            if oc.get("test_transfert") and self._oc_transfert(pair) is False:
+                events.append({"type": "vente impossible", "key": key, "symbol": pos.get("symbol"), "cause": "transfert refusé"})
+                pos["qty"] = 0
+                return self._close(key, "vente impossible", events)
             e = self._oc(pair)
             if e:
                 if oc.get("retrait_ratio") and e.get("retrait_ratio") is not None and e["retrait_ratio"] >= oc["retrait_ratio"]:
