@@ -327,6 +327,12 @@ class Paper:
                     events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                    "reason": "honeypot probable : le jeton refuse le transfert vers le pool (simulation)"})
                     return
+                if oc and oc.get("taxe_max_pct") and p["row"]["chain"] == "base":
+                    tx = self._oc_taxe(pair)
+                    if tx is not None and tx > oc["taxe_max_pct"]:
+                        events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                       "reason": f"taxe de vente {tx} % (max {oc['taxe_max_pct']} %)"})
+                        return
                 self._buy(key, p, price, pair, events)
                 return
         if time.time() - p["t"] > c["entry_window_min"] * 60:
@@ -347,6 +353,18 @@ class Paper:
         try:
             import onchain
             return onchain.etat(pid)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _oc_taxe(pair):
+        """Taxe prélevée lors d'un transfert vers le pool (simulation eth_simulateV1) en %, ou None."""
+        try:
+            import onchain
+            pid = pair.get("pairAddress") or ""
+            tok = (pair.get("baseToken") or {}).get("address") or ""
+            dest = onchain.POOLMANAGER if len(pid) == 66 else pid
+            return onchain.taxe_vente(tok, dest) if tok and dest else None
         except Exception:
             return None
 
@@ -518,6 +536,12 @@ class Paper:
                 events.append({"type": "vente impossible", "key": key, "symbol": pos.get("symbol"), "cause": "transfert refusé"})
                 pos["qty"] = 0
                 return self._close(key, "vente impossible", events)
+            if oc.get("taxe_max_pct"):
+                tx = self._oc_taxe(pair)
+                if tx is not None and tx > oc["taxe_max_pct"]:
+                    events.append({"type": "taxe de vente", "key": key, "symbol": pos.get("symbol"), "taxe_pct": tx})
+                    pos["qty"] = 0
+                    return self._close(key, "taxe de vente", events)
             e = self._oc(pair)
             if e:
                 if oc.get("retrait_ratio") and e.get("retrait_ratio") is not None and e["retrait_ratio"] >= oc["retrait_ratio"]:
