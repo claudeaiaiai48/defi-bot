@@ -333,6 +333,16 @@ class Paper:
                         events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                        "reason": f"taxe de vente {tx} % (max {oc['taxe_max_pct']} %)"})
                         return
+                if oc and oc.get("exiger_tests") and p["row"]["chain"] == "base":
+                    txs = self._oc_taxes(pair)
+                    if self._oc_transfert(pair) is not True or txs.get("vente") is None or txs.get("achat") is None:
+                        events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                       "reason": "tests impossibles : aucun détenteur récent testable ou RPC indisponible"})
+                        return
+                    if txs["achat"] > oc.get("taxe_max_pct", 15):
+                        events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                       "reason": f"taxe d'achat {txs['achat']} % (max {oc.get('taxe_max_pct', 15)} %)"})
+                        return
                 self._buy(key, p, price, pair, events)
                 return
         if time.time() - p["t"] > c["entry_window_min"] * 60:
@@ -355,6 +365,20 @@ class Paper:
             return onchain.etat(pid)
         except Exception:
             return None
+
+    @staticmethod
+    def _oc_taxes(pair):
+        """Taxes d'achat et de vente mesurées (%), {} si indisponibles."""
+        try:
+            import onchain
+            pid = pair.get("pairAddress") or ""
+            tok = (pair.get("baseToken") or {}).get("address") or ""
+            dest = onchain.POOLMANAGER if len(pid) == 66 else pid
+            if not tok or not dest:
+                return {}
+            return {"achat": onchain.taxe_achat(tok, dest), "vente": onchain.taxe_vente(tok, dest)}
+        except Exception:
+            return {}
 
     @staticmethod
     def _oc_taxe(pair):
@@ -456,7 +480,9 @@ class Paper:
             if (t10 is not None and t10 > mf.get("top10_pct", 20)) or (sec.get("createur_detient") and mf.get("createur", True)):
                 size = round(size * mf.get("facteur", 0.5), 2)
         imp = self.exec_factor(size, liq, "buy")
-        qty = size * (1 - self.fee(chain)) / (price * imp)
+        oc = c.get("onchain")
+        tx = self._oc_taxes(pair) if (oc and oc.get("taxes_payees") and chain == "base") else {}     # taxes d'achat/vente réellement payées
+        qty = size * (1 - self.fee(chain)) * (1 - (tx.get("achat") or 0) / 100) / (price * imp)
         st["cash"][chain] -= size
         st["entered"].append(key)
         st["trades_per_day"][today()] = st["trades_per_day"].get(today(), 0) + 1
@@ -474,6 +500,8 @@ class Paper:
             "origine": self._origine(row, pair),
             "rug": self._rug(row, pair),
         }
+        if tx:
+            st["open"][key]["taxe_achat"], st["open"][key]["taxe_vente"] = tx.get("achat"), tx.get("vente")
         events.append({"type": "achat", "key": key, "symbol": row["symbol"],
                        "strategy": p["strategy"], "price": price, "usd": size,
                        "repli_pct": round((1 - price / p["high"]) * 100, 1),
@@ -486,7 +514,7 @@ class Paper:
             qty = pos["qty"] if all_ else pos["qty0"] * frac_of_initial
         qty = min(pos["qty"], qty)
         usd = (qty * price * (1 - self.fee(pos["chain"])) * self.exec_factor(qty * price, pos.get("liq"), "sell")
-               if price > 0 else 0.0)
+               * (1 - (pos.get("taxe_vente") or 0) / 100) if price > 0 else 0.0)
         pos["qty"] -= qty
         pos["proceeds_usd"] += usd
         pos["sells"] += 1
@@ -538,6 +566,8 @@ class Paper:
                 return self._close(key, "vente impossible", events)
             if oc.get("taxe_max_pct"):
                 tx = self._oc_taxe(pair)
+                if tx is not None and oc.get("taxes_payees"):
+                    pos["taxe_vente"] = tx
                 if tx is not None and tx > oc["taxe_max_pct"]:
                     events.append({"type": "taxe de vente", "key": key, "symbol": pos.get("symbol"), "taxe_pct": tx})
                     pos["qty"] = 0
