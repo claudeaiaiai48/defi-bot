@@ -302,6 +302,13 @@ class Paper:
                                    "reason": blocked})
                     return
                 st["pending"].pop(key)
+                fr = c.get("filtre_rug")           # wallet de test : refus des lancements à signature de rug (lot de tokens / opérateur connu)
+                if fr and p["row"]["chain"] == "base":
+                    sg = self._rug(p["row"], pair) or {}
+                    if sg.get("operateur") or sg.get("lot", 0) >= fr.get("lot_min", 6):
+                        events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                       "reason": f"rug probable : lot de {sg.get('lot')} adresses, opérateur connu {sg.get('operateur')}"})
+                        return
                 self._buy(key, p, price, pair, events)
                 return
         if time.time() - p["t"] > c["entry_window_min"] * 60:
@@ -344,6 +351,17 @@ class Paper:
         return o
 
     @staticmethod
+    def _rug(row, pair):
+        """Signature on-chain du lancement (Base, noeud public). Collecte ; ne décide que si filtre_rug est activé."""
+        if row.get("chain") != "base":
+            return None
+        try:
+            import rugcheck
+            return rugcheck.signature(row.get("token"), (pair or {}).get("pairCreatedAt"))
+        except Exception as e:
+            return {"erreur": str(e)[:60]}
+
+    @staticmethod
     def _outils_entree(pair):
         """Collecte d'infos (aucun effet sur les décisions) : état du marché au moment précis de l'achat."""
         try:
@@ -380,6 +398,7 @@ class Paper:
             "social": row.get("social"), "securite": row.get("securite"),
             "outils": row.get("outils"), "outils_entree": self._outils_entree(pair),
             "origine": self._origine(row, pair),
+            "rug": self._rug(row, pair),
         }
         events.append({"type": "achat", "key": key, "symbol": row["symbol"],
                        "strategy": p["strategy"], "price": price, "usd": size,
@@ -407,7 +426,7 @@ class Paper:
         pnl = pos["proceeds_usd"] - pos["cost_usd"]
         trade = {k: pos.get(k) for k in ("chain", "token", "symbol", "strategy", "url",
                                          "entry_t", "entry_price", "cost_usd", "exits", "social", "securite",
-                                         "outils", "outils_entree", "origine")}
+                                         "outils", "outils_entree", "origine", "rug")}
         trade.update({"close_t": time.time(), "close_reason": reason,
                       "proceeds_usd": round(pos["proceeds_usd"], 2), "pnl_usd": round(pnl, 2),
                       "pnl_pct": round(100 * pnl / pos["cost_usd"], 1)})
