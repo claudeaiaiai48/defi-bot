@@ -304,6 +304,9 @@ class Paper:
                     events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                    "reason": blocked})
                     return
+                sc = c.get("solana_check")      # test de vente Solana : aller-retour Jupiter (devis), fait en arrière-plan
+                if sc and p["row"]["chain"] == "solana" and not self._sol_pret(p["row"]["token"]):
+                    return          # devis en cours : le token reste en attente
                 oc0 = c.get("onchain")
                 if oc0 and oc0.get("exiger_tests") and p["row"]["chain"] == "base" and not self._oc_pret(pair):
                     return          # vérifications on-chain en cours (travailleurs) : le token reste en attente
@@ -346,6 +349,13 @@ class Paper:
                         events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                        "reason": f"taxe d'achat {txs['achat']} % (max {oc.get('taxe_max_pct', 15)} %)"})
                         return
+                if sc and p["row"]["chain"] == "solana":
+                    pr = self._sol_perte(p["row"]["token"])
+                    if pr is None or pr > sc.get("max_perte_pct", 12):
+                        events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                       "reason": ("aller-retour Jupiter impossible (erreur ou pas de route)" if pr is None
+                                                  else f"aller-retour Jupiter {pr} % (max {sc.get('max_perte_pct', 12)} %)")})
+                        return
                 self._buy(key, p, price, pair, events)
                 return
         if time.time() - p["t"] > c["entry_window_min"] * 60:
@@ -356,6 +366,25 @@ class Paper:
                                              "chute_max_pct": round(p.get("maxdrop", 0), 1)}])[-100:]
             events.append({"type": "pas de repli", "key": key, "symbol": p["row"]["symbol"],
                            "chute_max_pct": round(p.get("maxdrop", 0), 1)})
+
+    @staticmethod
+    def _sol_pret(mint):
+        """Lance le devis aller-retour Jupiter en arrière-plan ; True quand le résultat est connu."""
+        try:
+            import onchain, solcheck
+            return onchain._async(("sol", mint), lambda: solcheck.aller_retour(mint), 300) is not onchain.ATTENTE
+        except Exception:
+            return True
+
+    @staticmethod
+    def _sol_perte(mint):
+        """Perte (%) de l'aller-retour Jupiter, ou None si inconnue."""
+        try:
+            import onchain, solcheck
+            r = onchain._async(("sol", mint), lambda: solcheck.aller_retour(mint), 300)
+            return None if r is onchain.ATTENTE else r
+        except Exception:
+            return None
 
     @staticmethod
     def _oc_pret(pair):
