@@ -304,6 +304,9 @@ class Paper:
                     events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                    "reason": blocked})
                     return
+                oc0 = c.get("onchain")
+                if oc0 and oc0.get("exiger_tests") and p["row"]["chain"] == "base" and not self._oc_pret(pair):
+                    return          # vérifications on-chain en cours (travailleurs) : le token reste en attente
                 st["pending"].pop(key)
                 fr = c.get("filtre_rug")           # wallet de test : refus des lancements à signature de rug (lot de tokens / opérateur connu)
                 if fr and p["row"]["chain"] == "base":
@@ -355,6 +358,21 @@ class Paper:
                            "chute_max_pct": round(p.get("maxdrop", 0), 1)})
 
     @staticmethod
+    def _oc_pret(pair):
+        """Lance en arrière-plan les vérifications on-chain d'un token et dit si elles sont toutes terminées."""
+        try:
+            import onchain
+            pid = pair.get("pairAddress") or ""
+            tok = (pair.get("baseToken") or {}).get("address") or ""
+            dest = onchain.POOLMANAGER if len(pid) == 66 else pid
+            if not tok or not dest:
+                return True
+            age = (time.time() * 1000 - float(pair.get("pairCreatedAt") or 0)) / 60000
+            return onchain.pret(pid, tok, dest, float(pair.get("priceUsd") or 0), age, v4=len(pid) == 66)
+        except Exception:
+            return True
+
+    @staticmethod
     def _oc(pair):
         """Etat on-chain d'un pool Uniswap v4 (module onchain) ; None si le pool n'est pas v4 ou si le RPC échoue."""
         pid = (pair.get("pairAddress") or "") if pair else ""
@@ -362,7 +380,8 @@ class Paper:
             return None
         try:
             import onchain
-            return onchain.etat(pid)
+            r = onchain.a_etat(pid)
+            return None if r is onchain.ATTENTE else r
         except Exception:
             return None
 
@@ -376,7 +395,8 @@ class Paper:
             dest = onchain.POOLMANAGER if len(pid) == 66 else pid
             if not tok or not dest:
                 return {}
-            return {"achat": onchain.taxe_achat(tok, dest), "vente": onchain.taxe_vente(tok, dest)}
+            r = onchain.a_taxes(tok, dest)
+            return {} if r is onchain.ATTENTE or r is None else r
         except Exception:
             return {}
 
@@ -388,7 +408,10 @@ class Paper:
             pid = pair.get("pairAddress") or ""
             tok = (pair.get("baseToken") or {}).get("address") or ""
             dest = onchain.POOLMANAGER if len(pid) == 66 else pid
-            return onchain.taxe_vente(tok, dest) if tok and dest else None
+            if not tok or not dest:
+                return None
+            r = onchain.a_taxes(tok, dest)
+            return None if r is onchain.ATTENTE or r is None else r.get("vente")
         except Exception:
             return None
 
@@ -400,7 +423,10 @@ class Paper:
             pid = pair.get("pairAddress") or ""
             tok = (pair.get("baseToken") or {}).get("address") or ""
             dest = onchain.POOLMANAGER if len(pid) == 66 else pid
-            return onchain.vente_token(tok, dest) if tok and dest else None
+            if not tok or not dest:
+                return None
+            r = onchain.a_transfert(tok, dest)
+            return None if r is onchain.ATTENTE else r
         except Exception:
             return None
 
@@ -413,8 +439,9 @@ class Paper:
         try:
             import onchain
             age = (time.time() * 1000 - float(pair.get("pairCreatedAt") or 0)) / 60000
-            return onchain.vente_possible(pid, (pair.get("baseToken") or {}).get("address") or "",
-                                          float(pair.get("priceUsd") or 0), age, usd)
+            r = onchain.a_vente(pid, (pair.get("baseToken") or {}).get("address") or "",
+                                float(pair.get("priceUsd") or 0), age, usd)
+            return None if r is onchain.ATTENTE else r
         except Exception:
             return None
 
