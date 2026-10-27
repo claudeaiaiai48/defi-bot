@@ -72,3 +72,62 @@ def etat(pool_id, blocs=BLOCS):
            "retrait_ratio": round(net / liq_max, 3) if liq_max else None}
     _CACHE[pool_id] = (time.time(), res)
     return res
+
+
+# --- Simulation de vente (quoter Uniswap v4) -------------------------------------------------------------------
+INIT = "0xdd466e674ea557f56295e2d0218a125ea4b4f0f6f3307b95f85e6110838d6438"
+QUOTE = "aa9d21cb"          # quoteExactInputSingle(((address,address,uint24,int24,address),bool,uint128,bytes))
+QUOTER = "0x0d5e0f971ed27fbff6c2837bf31316121532048d"
+_KEYS, _VENTE = {}, {}
+
+
+def _cle(pool_id, age_min):
+    """Clé du pool (monnaies, frais, hooks) lue dans l'événement Initialize ; mémorisée."""
+    if pool_id in _KEYS:
+        return _KEYS[pool_id]
+    bn = _bloc()
+    debut = bn - int(age_min * 30) - 600
+    to = bn
+    while to > max(debut, bn - 8500 * 6):
+        fr = max(debut, to - 8500)
+        logs = _rpc("eth_getLogs", [{"address": POOLMANAGER, "fromBlock": hex(fr), "toBlock": hex(to),
+                                     "topics": [INIT, pool_id]}], timeout=10)
+        if logs:
+            l = logs[0]
+            w = _mots(l["data"])
+            _KEYS[pool_id] = {"c0": "0x" + l["topics"][2][26:], "c1": "0x" + l["topics"][3][26:],
+                              "fee": w[0], "ts": w[1], "hooks": "0x" + w[2][24:]}
+            return _KEYS[pool_id]
+        to = fr - 1
+    return None
+
+
+def vente_possible(pool_id, token, prix_usd, age_min, usd=30):
+    """Simule la vente d'environ usd dollars du jeton dans le pool (quoter v4, eth_call). True = la vente passe,
+    False = le pool refuse (vide, retiré, bloqué), None = on ne sait pas (hooks, erreur RPC, jeton non reconnu).
+    Limite : le quoter ne rejoue pas les transferts du jeton, donc un blocage dans le contrat du jeton n'est pas vu."""
+    c = _VENTE.get(pool_id)
+    if c and time.time() - c[0] < 90:
+        return c[1]
+    k = _cle(pool_id, age_min)
+    if not k or int(k["hooks"], 16):
+        return None
+    t = token.lower()
+    if t != k["c0"].lower() and t != k["c1"].lower():
+        return None
+    zfo = 1 if t == k["c0"].lower() else 0
+    amt = int(usd / prix_usd * 10 ** 18) if prix_usd > 0 else 0
+    if amt <= 0 or amt >= 1 << 128:
+        return None
+    p = lambda x: format(x, "064x")
+    a = lambda x: x[2:].rjust(64, "0")
+    data = "0x" + QUOTE + p(0x20) + a(k["c0"]) + a(k["c1"]) + k["fee"] + k["ts"] + a(k["hooks"]) + p(zfo) + p(amt) + p(0x100) + p(0)
+    try:
+        r = _rpc("eth_call", [{"to": QUOTER, "data": data}, "latest"])
+        ok = int(r[2:66], 16) > 0
+    except RuntimeError as e:
+        if "revert" not in str(e).lower():
+            return None
+        ok = False
+    _VENTE[pool_id] = (time.time(), ok)
+    return ok
