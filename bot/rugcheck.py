@@ -3,7 +3,7 @@
 Collecte seule par défaut ; ne décide rien sans l'option filtre_rug d'un wallet de test."""
 import json, time, urllib.request
 
-RPC = "https://mainnet.base.org"
+RPC = "https://base-rpc.publicnode.com"      # le noeud mainnet.base.org limite trop vite les requêtes ; publicnode accepte eth_getLogs sur ~9000 blocs
 POOLMANAGER = "0x498581ff718922c3f8e6a244956af099b2652b2b"
 OPERATEURS = {"0x215199f691cd1cc86ce7bbf803a8b9d9e79eb2e7"}      # contrat d'achat/envoi en lot vu sur les rugs retracés
 TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
