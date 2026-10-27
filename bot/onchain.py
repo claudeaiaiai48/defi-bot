@@ -131,3 +131,48 @@ def vente_possible(pool_id, token, prix_usd, age_min, usd=30):
         ok = False
     _VENTE[pool_id] = (time.time(), ok)
     return ok
+
+
+# --- Test de transfert du jeton (honeypot dans le contrat du jeton) ------------------------------------------------
+TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+_TR = {}
+
+
+def vente_token(token, destination):
+    """Simule (eth_call) le transfert d'une partie du solde d'un détenteur récent vers le pool (destination), comme le
+    fait une vente. True = au moins un détenteur peut transférer ; False = le transfert est refusé pour au moins deux
+    détenteurs et réussit pour aucun (blocage, pause, liste noire, vente interdite) ; None = pas assez d'information."""
+    c = _TR.get(token)
+    if c and time.time() - c[0] < 120:
+        return c[1]
+    bn = _bloc()
+    logs = _rpc("eth_getLogs", [{"address": token, "fromBlock": hex(bn - 1200), "toBlock": "latest",
+                                 "topics": [TRANSFER]}], timeout=10)
+    exclu = {destination.lower(), POOLMANAGER, "0x" + "0" * 40, token.lower()}
+    cands = []
+    for l in reversed(logs):
+        h = "0x" + l["topics"][2][26:]
+        if h not in exclu and h not in cands:
+            cands.append(h)
+        if len(cands) >= 6:
+            break
+    p = lambda x: x[2:].rjust(64, "0")
+    ok = ko = 0
+    for h in cands:
+        bal = int(_rpc("eth_call", [{"to": token, "data": "0x70a08231" + p(h)}, "latest"]), 16)
+        if bal <= 0:
+            continue
+        try:
+            r = _rpc("eth_call", [{"from": h, "to": token,
+                                   "data": "0xa9059cbb" + p(destination) + format(bal // 10 + 1, "064x")}, "latest"])
+            if r == "0x" or int(r, 16) == 1:
+                ok += 1
+                break
+            ko += 1
+        except RuntimeError as e:
+            if "revert" not in str(e).lower():
+                raise
+            ko += 1
+    res = True if ok else (False if ko >= 2 else None)
+    _TR[token] = (time.time(), res)
+    return res
