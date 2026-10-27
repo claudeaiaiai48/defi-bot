@@ -248,3 +248,53 @@ def taxe_achat(token, destination):
             res = round(max(0.0, 1 - recu / amt) * 100, 1)
     _TA[token] = (time.time(), res)
     return res
+
+
+# --- Travailleurs en arrière-plan : le bot ne bloque jamais sur le RPC ---------------------------------------------
+from concurrent.futures import ThreadPoolExecutor
+
+ATTENTE = object()                     # résultat pas encore calculé
+_ASYNC, _EN_COURS = {}, set()
+_POOL = ThreadPoolExecutor(max_workers=6)
+
+
+def _run(cle, fn, ttl):
+    try:
+        _ASYNC[cle] = (time.time(), fn())
+    except Exception:
+        _ASYNC[cle] = (time.time() - ttl + 60, None)       # échec RPC : on réessaie dans ~1 min
+    finally:
+        _EN_COURS.discard(cle)
+
+
+def _async(cle, fn, ttl):
+    """Dernier résultat connu (ATTENTE s'il n'y en a pas encore) ; relance un calcul en arrière-plan s'il est périmé."""
+    r = _ASYNC.get(cle)
+    if (r is None or time.time() - r[0] > ttl) and cle not in _EN_COURS:
+        _EN_COURS.add(cle)
+        _POOL.submit(_run, cle, fn, ttl)
+    return ATTENTE if r is None else r[1]
+
+
+def a_etat(pid):
+    return _async(("etat", pid), lambda: etat(pid), 60)
+
+
+def a_vente(pid, token, prix, age, usd=30):
+    return _async(("vente", pid), lambda: vente_possible(pid, token, prix, age, usd), 300)
+
+
+def a_transfert(token, dest):
+    return _async(("tr", token), lambda: vente_token(token, dest), 600)
+
+
+def a_taxes(token, dest):
+    return _async(("tx", token), lambda: {"achat": taxe_achat(token, dest), "vente": taxe_vente(token, dest)}, 600)
+
+
+def pret(pid, token, dest, prix, age, v4=True):
+    """Lance toutes les vérifications d'un token et dit si elles sont toutes terminées (True) ou en cours (False)."""
+    r = [a_transfert(token, dest), a_taxes(token, dest)]
+    if v4:
+        r.append(a_vente(pid, token, prix, age))
+    return all(x is not ATTENTE for x in r)
