@@ -219,3 +219,32 @@ def taxe_vente(token, destination):
         break
     _TX[token] = (time.time(), res)
     return res
+
+
+# --- Taxe d'achat : le jeton sort du pool vers l'acheteur, on mesure ce qui arrive ----------------------------------
+_TA = {}
+
+
+def taxe_achat(token, destination):
+    """Pourcentage prélevé quand le pool (destination) envoie des jetons à un acheteur : transfert simulé du pool vers
+    une adresse neuve (eth_simulateV1), solde de cette adresse avant et après. None si le test est impossible."""
+    c = _TA.get(token)
+    if c and time.time() - c[0] < 120:
+        return c[1]
+    p = lambda x: x[2:].rjust(64, "0")
+    neuve = "0x00000000000000000000000000000000000b0b01"
+    bal = int(_rpc("eth_call", [{"to": token, "data": "0x70a08231" + p(destination)}, "latest"]), 16)
+    res = None
+    if bal > 0:
+        amt = bal // 1000 + 1
+        lecture = "0x70a08231" + p(neuve)
+        sim = _rpc("eth_simulateV1", [{"blockStateCalls": [{"calls": [
+            {"to": token, "data": lecture},
+            {"from": destination, "to": token, "data": "0xa9059cbb" + p(neuve) + format(amt, "064x")},
+            {"to": token, "data": lecture}]}], "validation": False}, "latest"], timeout=10)
+        calls = sim[0]["calls"]
+        if calls[1].get("status") == "0x1":
+            recu = int(calls[2]["returnData"], 16) - int(calls[0]["returnData"], 16)
+            res = round(max(0.0, 1 - recu / amt) * 100, 1)
+    _TA[token] = (time.time(), res)
+    return res
