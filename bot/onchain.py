@@ -176,3 +176,46 @@ def vente_token(token, destination):
     res = True if ok else (False if ko >= 2 else None)
     _TR[token] = (time.time(), res)
     return res
+
+
+# --- Taxe de vente : montant reçu par le pool / montant envoyé (eth_simulateV1, rien n'est envoyé) ---------------------
+_TX = {}
+
+
+def taxe_vente(token, destination):
+    """Pourcentage prélevé quand un détenteur transfère une partie de son solde vers le pool (destination) : on lit le
+    solde du pool avant et après le transfert simulé. Renvoie None si aucun détenteur ne peut être testé."""
+    c = _TX.get(token)
+    if c and time.time() - c[0] < 120:
+        return c[1]
+    bn = _bloc()
+    logs = _rpc("eth_getLogs", [{"address": token, "fromBlock": hex(bn - 1200), "toBlock": "latest",
+                                 "topics": [TRANSFER]}], timeout=10)
+    exclu = {destination.lower(), POOLMANAGER, "0x" + "0" * 40, token.lower()}
+    cands = []
+    for l in reversed(logs):
+        h = "0x" + l["topics"][2][26:]
+        if h not in exclu and h not in cands:
+            cands.append(h)
+        if len(cands) >= 4:
+            break
+    p = lambda x: x[2:].rjust(64, "0")
+    res = None
+    for h in cands:
+        bal = int(_rpc("eth_call", [{"to": token, "data": "0x70a08231" + p(h)}, "latest"]), 16)
+        if bal <= 0:
+            continue
+        amt = bal // 10 + 1
+        lecture = "0x70a08231" + p(destination)
+        sim = _rpc("eth_simulateV1", [{"blockStateCalls": [{"calls": [
+            {"to": token, "data": lecture},
+            {"from": h, "to": token, "data": "0xa9059cbb" + p(destination) + format(amt, "064x")},
+            {"to": token, "data": lecture}]}], "validation": False}, "latest"], timeout=10)
+        calls = sim[0]["calls"]
+        if calls[1].get("status") != "0x1":
+            continue
+        recu = int(calls[2]["returnData"], 16) - int(calls[0]["returnData"], 16)
+        res = round(max(0.0, 1 - recu / amt) * 100, 1)
+        break
+    _TX[token] = (time.time(), res)
+    return res
