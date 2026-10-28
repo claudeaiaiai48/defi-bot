@@ -1216,7 +1216,7 @@
   }
  },
  "recherche_continue": {
-  "_note": "Recherche continue (bot/recherche_continue.py, service defi-bot-recherche). Score = rendement moyen de la pire des 3 tranches de temps. Résultat : recherche_continue.json.",
+  "_note": "Recherche continue (bot/recherche_continue.py, service defi-bot-recherche). Score = rendement moyen de la pire des 3 tranches de temps. Les reserve_jours derniers jours ne sont jamais vus par la recherche : seules les 10 meilleures configs y sont rejouées (vérification). Résultat : recherche_continue.json.",
   "chaines": [
    "solana",
    "base"
@@ -1461,6 +1461,7 @@
      }
     ]
    }
-  }
+  },
+  "reserve_jours": 2
  }
 }
