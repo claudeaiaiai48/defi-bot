@@ -429,6 +429,582 @@
    },
    "stop_after_tp1_pct": 0,
    "trail_apres_tp1_pct": 20
+  },
+  "S_E_cassure20": {
+   "description": "Solana - entrée cassure : nouveau plus haut, +20 % en 15 min, accélération >= 2 ; sorties du principal",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "cassure",
+    "fenetre_min": 15,
+    "hausse_pct": 20,
+    "accel_min": 2
+   }
+  },
+  "S_E_cassure20_trail15": {
+   "description": "Solana - entrée cassure : nouveau plus haut, +20 % en 15 min, accélération >= 2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "cassure",
+    "fenetre_min": 15,
+    "hausse_pct": 20,
+    "accel_min": 2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "S_E_cassure40": {
+   "description": "Solana - entrée cassure : nouveau plus haut, +40 % en 15 min, accélération >= 2 ; sorties du principal",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "cassure",
+    "fenetre_min": 15,
+    "hausse_pct": 40,
+    "accel_min": 2
+   }
+  },
+  "S_E_cassure40_trail15": {
+   "description": "Solana - entrée cassure : nouveau plus haut, +40 % en 15 min, accélération >= 2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "cassure",
+    "fenetre_min": 15,
+    "hausse_pct": 40,
+    "accel_min": 2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "S_E_palier100k": {
+   "description": "Solana - entrée palier : market cap franchit 100 000 $, achats/ventes 1 h >= 1,2 ; sorties du principal",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 100000,
+    "ratio_min": 1.2
+   }
+  },
+  "S_E_palier100k_trail15": {
+   "description": "Solana - entrée palier : market cap franchit 100 000 $, achats/ventes 1 h >= 1,2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 100000,
+    "ratio_min": 1.2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "S_E_palier250k": {
+   "description": "Solana - entrée palier : market cap franchit 250 000 $, achats/ventes 1 h >= 1,2 ; sorties du principal",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 250000,
+    "ratio_min": 1.2
+   }
+  },
+  "S_E_palier250k_trail15": {
+   "description": "Solana - entrée palier : market cap franchit 250 000 $, achats/ventes 1 h >= 1,2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 250000,
+    "ratio_min": 1.2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "S_E_palier500k": {
+   "description": "Solana - entrée palier : market cap franchit 500 000 $, achats/ventes 1 h >= 1,2 ; sorties du principal",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 500000,
+    "ratio_min": 1.2
+   }
+  },
+  "S_E_palier500k_trail15": {
+   "description": "Solana - entrée palier : market cap franchit 500 000 $, achats/ventes 1 h >= 1,2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 500000,
+    "ratio_min": 1.2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "S_E_rebond50": {
+   "description": "Solana - entrée rebond : après -50 % depuis le plus haut, +15 % depuis le plus bas, accélération >= 1,5 ; sorties du principal",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "rebond",
+    "chute_pct": 50,
+    "rebond_pct": 15,
+    "accel_min": 1.5
+   }
+  },
+  "S_E_rebond50_trail15": {
+   "description": "Solana - entrée rebond : après -50 % depuis le plus haut, +15 % depuis le plus bas, accélération >= 1,5 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "rebond",
+    "chute_pct": 50,
+    "rebond_pct": 15,
+    "accel_min": 1.5
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "S_E_rebond70": {
+   "description": "Solana - entrée rebond : après -70 % depuis le plus haut, +20 % depuis le plus bas ; sorties du principal",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "rebond",
+    "chute_pct": 70,
+    "rebond_pct": 20,
+    "accel_min": 0
+   }
+  },
+  "S_E_rebond70_trail15": {
+   "description": "Solana - entrée rebond : après -70 % depuis le plus haut, +20 % depuis le plus bas ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "solana"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 10000,
+    "min_liquidity_usd": 15000,
+    "min_txns_h1": 100,
+    "solana_dex_ids": [
+     "pumpswap"
+    ],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "rebond",
+    "chute_pct": 70,
+    "rebond_pct": 20,
+    "accel_min": 0
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "B_E_cassure20": {
+   "description": "Base - entrée cassure : nouveau plus haut, +20 % en 15 min, accélération >= 2 ; sorties du principal",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "cassure",
+    "fenetre_min": 15,
+    "hausse_pct": 20,
+    "accel_min": 2
+   }
+  },
+  "B_E_cassure20_trail15": {
+   "description": "Base - entrée cassure : nouveau plus haut, +20 % en 15 min, accélération >= 2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "cassure",
+    "fenetre_min": 15,
+    "hausse_pct": 20,
+    "accel_min": 2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "B_E_cassure40": {
+   "description": "Base - entrée cassure : nouveau plus haut, +40 % en 15 min, accélération >= 2 ; sorties du principal",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "cassure",
+    "fenetre_min": 15,
+    "hausse_pct": 40,
+    "accel_min": 2
+   }
+  },
+  "B_E_cassure40_trail15": {
+   "description": "Base - entrée cassure : nouveau plus haut, +40 % en 15 min, accélération >= 2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "cassure",
+    "fenetre_min": 15,
+    "hausse_pct": 40,
+    "accel_min": 2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "B_E_palier100k": {
+   "description": "Base - entrée palier : market cap franchit 100 000 $, achats/ventes 1 h >= 1,2 ; sorties du principal",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 100000,
+    "ratio_min": 1.2
+   }
+  },
+  "B_E_palier100k_trail15": {
+   "description": "Base - entrée palier : market cap franchit 100 000 $, achats/ventes 1 h >= 1,2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 100000,
+    "ratio_min": 1.2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "B_E_palier250k": {
+   "description": "Base - entrée palier : market cap franchit 250 000 $, achats/ventes 1 h >= 1,2 ; sorties du principal",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 250000,
+    "ratio_min": 1.2
+   }
+  },
+  "B_E_palier250k_trail15": {
+   "description": "Base - entrée palier : market cap franchit 250 000 $, achats/ventes 1 h >= 1,2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 250000,
+    "ratio_min": 1.2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "B_E_palier500k": {
+   "description": "Base - entrée palier : market cap franchit 500 000 $, achats/ventes 1 h >= 1,2 ; sorties du principal",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 500000,
+    "ratio_min": 1.2
+   }
+  },
+  "B_E_palier500k_trail15": {
+   "description": "Base - entrée palier : market cap franchit 500 000 $, achats/ventes 1 h >= 1,2 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "palier",
+    "palier_usd": 500000,
+    "ratio_min": 1.2
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "B_E_rebond50": {
+   "description": "Base - entrée rebond : après -50 % depuis le plus haut, +15 % depuis le plus bas, accélération >= 1,5 ; sorties du principal",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "rebond",
+    "chute_pct": 50,
+    "rebond_pct": 15,
+    "accel_min": 1.5
+   }
+  },
+  "B_E_rebond50_trail15": {
+   "description": "Base - entrée rebond : après -50 % depuis le plus haut, +15 % depuis le plus bas, accélération >= 1,5 ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "rebond",
+    "chute_pct": 50,
+    "rebond_pct": 15,
+    "accel_min": 1.5
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "B_E_rebond70": {
+   "description": "Base - entrée rebond : après -70 % depuis le plus haut, +20 % depuis le plus bas ; sorties du principal",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "rebond",
+    "chute_pct": 70,
+    "rebond_pct": 20,
+    "accel_min": 0
+   }
+  },
+  "B_E_rebond70_trail15": {
+   "description": "Base - entrée rebond : après -70 % depuis le plus haut, +20 % depuis le plus bas ; sorties avec stop suiveur -15 % après TP1",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "entree": {
+    "type": "rebond",
+    "chute_pct": 70,
+    "rebond_pct": 20,
+    "accel_min": 0
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
   }
  }
 }
