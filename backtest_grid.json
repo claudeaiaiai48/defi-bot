@@ -12,7 +12,8 @@
    "solana_dex_ids": [
     "pumpswap"
    ],
-   "base_dex_ids": []
+   "base_dex_ids": [],
+   "exiger_source_hors_gecko": true
   },
   "fee_pct": {
    "solana": 1.75,
