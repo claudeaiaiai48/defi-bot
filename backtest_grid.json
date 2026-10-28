@@ -1,0 +1,339 @@
+{
+ "_note": "Grille du backtest (bot/backtest.py). Toute modification relance le calcul sur le serveur.",
+ "base_regles": {
+  "chains": [
+   "solana",
+   "base"
+  ],
+  "signal": {
+   "min_volume_h1_usd": 50000,
+   "min_liquidity_usd": 15000,
+   "min_txns_h1": 300,
+   "solana_dex_ids": [
+    "pumpswap"
+   ],
+   "base_dex_ids": []
+  },
+  "fee_pct": {
+   "solana": 1.75,
+   "base": 1
+  },
+  "slippage_pct": 0.5,
+  "impact_extra_pct": 2.5,
+  "mise_usd": 30,
+  "pullback_min_pct": 10,
+  "pullback_max_pct": 15,
+  "green_candle_max_pct": 15,
+  "entry_window_min": 5,
+  "stop_initial_pct": -20,
+  "tp1_pct": 30,
+  "tp1_sell_frac": 0.55,
+  "stop_after_tp1_pct": 8,
+  "tp2_pct": 80,
+  "tp2_sell_frac": 0.35,
+  "moonbag_frac": 0.1,
+  "moonbag_ladder": [
+   [
+    5,
+    0.5
+   ],
+   [
+    20,
+    0.25
+   ],
+   [
+    100,
+    0.25
+   ]
+  ],
+  "max_minutes_without_tp1": 90,
+  "filtre_entree": null
+ },
+ "variantes": {
+  "B_E": {
+   "description": "Base, règles de E (référence)",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20
+  },
+  "B_mcap15k": {
+   "description": "Base E + market cap >= 15000 $",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "filtre_entree": {
+    "mcap_min_usd": 15000
+   }
+  },
+  "B_mcap30k": {
+   "description": "Base E + market cap >= 30000 $",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "filtre_entree": {
+    "mcap_min_usd": 30000
+   }
+  },
+  "B_mcap50k": {
+   "description": "Base E + market cap >= 50000 $",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "filtre_entree": {
+    "mcap_min_usd": 50000
+   }
+  },
+  "B_mcap100k": {
+   "description": "Base E + market cap >= 100000 $",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "filtre_entree": {
+    "mcap_min_usd": 100000
+   }
+  },
+  "B_accel2.3": {
+   "description": "Base E + accélération >= 2,3",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "filtre_entree": {
+    "acceleration_min": 2.3
+   }
+  },
+  "B_age20": {
+   "description": "Base E + âge <= 20 min",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "filtre_entree": {
+    "age_max_min": 20
+   }
+  },
+  "B_SIG2": {
+   "description": "Base E + mcap >= 30k + accélération >= 2,3 (SIG2 sans top 10)",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "filtre_entree": {
+    "mcap_min_usd": 30000,
+    "acceleration_min": 2.3
+   }
+  },
+  "B_mcap30k_age20": {
+   "description": "Base E + mcap >= 30k + âge <= 20 min",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "filtre_entree": {
+    "mcap_min_usd": 30000,
+    "age_max_min": 20
+   }
+  },
+  "B_mcap50k_stop35": {
+   "description": "Base E + mcap >= 50k + stop -35 %",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "filtre_entree": {
+    "mcap_min_usd": 50000
+   },
+   "stop_initial_pct": -35
+  },
+  "B_E_stop35": {
+   "description": "Base E + stop -35 %",
+   "chains": [
+    "base"
+   ],
+   "signal": {
+    "min_volume_h1_usd": 8000,
+    "min_liquidity_usd": 5000,
+    "min_txns_h1": 80,
+    "solana_dex_ids": [],
+    "base_dex_ids": []
+   },
+   "pullback_min_pct": 2,
+   "pullback_max_pct": 30,
+   "entry_window_min": 20,
+   "stop_initial_pct": -35
+  },
+  "S_principal": {
+   "description": "Solana, règles du principal (référence)",
+   "chains": [
+    "solana"
+   ]
+  },
+  "S_stop35": {
+   "description": "Solana principal + stop -35 %",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -35
+  },
+  "S_stop50": {
+   "description": "Solana principal + stop -50 %",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -50
+  },
+  "S_stop35_ratio1.5": {
+   "description": "Solana stop -35 % + achats/ventes 1 h >= 1,5",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -35,
+   "filtre_entree": {
+    "achats_ventes_h1_min": 1.5
+   }
+  },
+  "S_stop35_accel2.3": {
+   "description": "Solana stop -35 % + accélération >= 2,3",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -35,
+   "filtre_entree": {
+    "acceleration_min": 2.3
+   }
+  },
+  "S_stop35_mcap100k": {
+   "description": "Solana stop -35 % + market cap >= 100 000 $",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -35,
+   "filtre_entree": {
+    "mcap_min_usd": 100000
+   }
+  },
+  "S_stop35_age15": {
+   "description": "Solana stop -35 % + âge <= 15 min",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -35,
+   "filtre_entree": {
+    "age_max_min": 15
+   }
+  },
+  "S_stop35_tp1_20": {
+   "description": "Solana stop -35 % + TP1 à +20 %",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -35,
+   "tp1_pct": 20
+  },
+  "S_stop35_repli5_30": {
+   "description": "Solana stop -35 % + repli 5-30 % sur 15 min",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -35,
+   "pullback_min_pct": 5,
+   "pullback_max_pct": 30,
+   "entry_window_min": 15
+  }
+ }
+}
