@@ -52,6 +52,29 @@ OnUnitActiveSec=2min
 WantedBy=timers.target
 UNIT
 
+cat > /etc/systemd/system/defi-bot-backtest.service <<'UNIT'
+[Unit]
+Description=defi-bot backtest hors ligne (journaux d'observation -> backtest.json)
+[Service]
+Type=oneshot
+User=defibot
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=60%
+MemoryMax=900M
+ExecStart=/usr/bin/python3 /opt/defi-bot/bot/backtest.py
+UNIT
+
+cat > /etc/systemd/system/defi-bot-backtest.timer <<'UNIT'
+[Unit]
+Description=defi-bot backtest toutes les 6 heures
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=6h
+[Install]
+WantedBy=timers.target
+UNIT
+
 python3 -c "import telethon" 2>/dev/null || {
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3-pip >/dev/null 2>&1 || true
   pip3 install -q --break-system-packages telethon >/dev/null 2>&1 || true
@@ -64,6 +87,8 @@ systemctl daemon-reload
 systemctl enable -q defi-bot defi-bot-web defi-bot-update.timer
 systemctl restart defi-bot defi-bot-web
 systemctl start defi-bot-update.timer
+systemctl enable -q --now defi-bot-backtest.timer || true
+systemctl start --no-block defi-bot-backtest.service || true
 if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
   ufw allow 22/tcp >/dev/null; ufw allow 8080/tcp >/dev/null
 fi
