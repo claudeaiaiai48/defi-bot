@@ -711,10 +711,17 @@ class Paper:
             if price <= pos["stop"]:
                 self._sell(key, 1, self._px_stop(pos, price), f"stop dur {c['stop_initial_pct']} %", events, all_=True)
                 return self._close(key, "stop", events)
+            sr = c.get("sortie_rapide")     # sortie si le token n'a pas fait +X % en N minutes (réglage issu du backtest)
+            if (sr and time.time() - pos["entry_t"] > sr["minutes"] * 60
+                    and (pos["peak"] / pos["entry_price"] - 1) * 100 < sr["gain_min_pct"] and gain < c["tp1_pct"]):
+                self._sell(key, 1, price, f"pas +{sr['gain_min_pct']} % en {sr['minutes']} min", events, all_=True)
+                return self._close(key, "temps court", events)
             if gain >= c["tp1_pct"]:
                 self._sell(key, c["tp1_sell_frac"], price, f"TP1 +{c['tp1_pct']} %", events)
                 pos["tp1"] = True
                 pos["stop"] = pos["entry_price"] * (1 + c["stop_after_tp1_pct"] / 100)
+                if pos["qty"] <= pos["qty0"] * 1e-9:
+                    return self._close(key, "tout vendu au TP1", events)
             elif time.time() - pos["entry_t"] > c["max_minutes_without_tp1"] * 60:
                 self._sell(key, 1, price, f"{c['max_minutes_without_tp1']} min sans +{c['tp1_pct']} %",
                            events, all_=True)
@@ -723,6 +730,9 @@ class Paper:
                 return
 
         if not pos["tp2"]:
+            tr = c.get("trail_apres_tp1_pct")   # stop suiveur sous le plus haut après TP1 (réglage issu du backtest)
+            if tr:
+                pos["stop"] = max(pos["stop"], pos["peak"] * (1 - tr / 100))
             if price <= pos["stop"]:
                 self._sell(key, 1, self._px_stop(pos, price), f"stop +{c['stop_after_tp1_pct']} % (moonbag comprise)",
                            events, all_=True)
