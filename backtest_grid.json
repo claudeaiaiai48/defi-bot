@@ -334,6 +334,100 @@
    "pullback_min_pct": 5,
    "pullback_max_pct": 30,
    "entry_window_min": 15
+  },
+  "S_trail15": {
+   "description": "Solana principal + stop suiveur -15 % sous le plus haut après TP1 (au lieu du stop fixe +8 %)",
+   "chains": [
+    "solana"
+   ],
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 15
+  },
+  "S_trail25": {
+   "description": "Solana principal + stop suiveur -25 % après TP1",
+   "chains": [
+    "solana"
+   ],
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 25
+  },
+  "S_tp1_30pct": {
+   "description": "Solana principal + vente de 30 % seulement au TP1",
+   "chains": [
+    "solana"
+   ],
+   "tp1_sell_frac": 0.3
+  },
+  "S_tp1_30pct_trail20": {
+   "description": "Solana principal + 30 % au TP1 + stop suiveur -20 %",
+   "chains": [
+    "solana"
+   ],
+   "tp1_sell_frac": 0.3,
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 20
+  },
+  "S_temps15_10": {
+   "description": "Solana principal + sortie si pas +10 % en 15 min",
+   "chains": [
+    "solana"
+   ],
+   "sortie_rapide": {
+    "minutes": 15,
+    "gain_min_pct": 10
+   }
+  },
+  "S_temps10_5": {
+   "description": "Solana principal + sortie si pas +5 % en 10 min",
+   "chains": [
+    "solana"
+   ],
+   "sortie_rapide": {
+    "minutes": 10,
+    "gain_min_pct": 5
+   }
+  },
+  "S_combo": {
+   "description": "Solana principal + 30 % au TP1 + suiveur -20 % + sortie si pas +10 % en 15 min",
+   "chains": [
+    "solana"
+   ],
+   "tp1_sell_frac": 0.3,
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 20,
+   "sortie_rapide": {
+    "minutes": 15,
+    "gain_min_pct": 10
+   }
+  },
+  "S_m100k_combo": {
+   "description": "Solana stop -35 % + mcap >= 100k + combo (30 % TP1, suiveur -20 %, sortie 15 min/+10 %)",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -35,
+   "filtre_entree": {
+    "mcap_min_usd": 100000
+   },
+   "tp1_sell_frac": 0.3,
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 20,
+   "sortie_rapide": {
+    "minutes": 15,
+    "gain_min_pct": 10
+   }
+  },
+  "S_m100k_trail20": {
+   "description": "Solana stop -35 % + mcap >= 100k + suiveur -20 % après TP1",
+   "chains": [
+    "solana"
+   ],
+   "stop_initial_pct": -35,
+   "filtre_entree": {
+    "mcap_min_usd": 100000
+   },
+   "stop_after_tp1_pct": 0,
+   "trail_apres_tp1_pct": 20
   }
  }
 }
