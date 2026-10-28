@@ -767,6 +767,14 @@ class Paper:
                     st["cash"][ch] -= exc * st["cash"][ch] / cash_tot
                 st["coffre"] = round(st.get("coffre", 0) + exc, 2)
                 events.append({"type": "coffre", "ajoute_usd": round(exc, 2), "total_usd": st["coffre"]})
+        if cf and cf.get("plancher_usd") and st.get("coffre", 0) > 0:   # le coffre reprend la main : il recharge le jeu jusqu'au plancher
+            manque = cf["plancher_usd"] - self.equity()
+            if manque > 1:
+                prise = round(min(manque, st["coffre"]), 2)
+                chs = list(st["cash"])
+                st["cash"][chs[0]] += prise
+                st["coffre"] = round(st["coffre"] - prise, 2)
+                events.append({"type": "coffre", "retire_usd": prise, "total_usd": st["coffre"]})
         rf = c.get("refill")
         if rf and self.equity() < rf["seuil_usd"]:
             # paper trading : le compte est rechargé ; la perte totale reste documentée
