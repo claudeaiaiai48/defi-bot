@@ -349,6 +349,13 @@ class Paper:
                         events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                        "reason": f"taxe d'achat {txs['achat']} % (max {oc.get('taxe_max_pct', 15)} %)"})
                         return
+                fe = c.get("filtre_entree")         # wallet de test : filtre d'entrée (market cap, concentration, accélération)
+                if fe:
+                    raison = self._filtre_entree(fe, p["row"], pair)
+                    if raison:
+                        events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                       "reason": f"filtre d'entrée : {raison}"})
+                        return
                 if sc and p["row"]["chain"] == "solana":
                     pr = self._sol_perte(p["row"]["token"])
                     if pr is None or pr > sc.get("max_perte_pct", 12):
@@ -514,6 +521,24 @@ class Paper:
             return rugcheck.signature(row.get("token"), (pair or {}).get("pairCreatedAt"))
         except Exception as e:
             return {"erreur": str(e)[:60]}
+
+    @staticmethod
+    def _filtre_entree(fe, row, pair):
+        """Wallets de test SIG : refuse l'entrée si le token est trop petit, trop concentré ou sans accélération."""
+        try:
+            from rugtools import market_pressure, late_entry
+            m, t = market_pressure(pair), late_entry(pair)
+        except Exception as e:
+            return f"indisponible ({str(e)[:40]})"
+        t10 = (row.get("securite") or {}).get("top10_hors_pool_pct")
+        mc, acc = t.get("mcap_usd"), m.get("acceleration_m5_sur_h1")
+        if fe.get("mcap_min_usd") and (mc is None or mc < fe["mcap_min_usd"]):
+            return f"market cap {mc} $ < {fe['mcap_min_usd']} $"
+        if fe.get("top10_max_pct") is not None and (t10 is None or t10 > fe["top10_max_pct"]):
+            return f"top 10 = {t10} % > {fe['top10_max_pct']} %"
+        if fe.get("acceleration_min") and (acc is None or acc < fe["acceleration_min"]):
+            return f"accélération {acc} < {fe['acceleration_min']}"
+        return None
 
     @staticmethod
     def _outils_entree(pair):
