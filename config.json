@@ -397,7 +397,7 @@
         }
       },
       "V": {
-        "label": "V - clone de E, 300 $ avec coffre (450 / 300)",
+        "label": "V - clone de E, jeu maintenu à 150 $ via le coffre",
         "chains": [
           "base"
         ],
@@ -423,8 +423,9 @@
           "base_dex_ids": []
         },
         "coffre": {
-          "seuil_usd": 450,
-          "garder_usd": 300
+          "seuil_usd": 150,
+          "garder_usd": 150,
+          "plancher_usd": 150
         }
       },
       "S": {
