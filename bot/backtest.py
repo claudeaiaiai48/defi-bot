@@ -111,6 +111,50 @@ def filtre_ok(p, fe):
     return True
 
 
+def trouver_entree(serie, i0, ent, r):
+    """Autres signaux d'entrée (sans regarder le futur : seulement les relevés déjà connus à l'instant t).
+    - cassure  : nouveau plus haut, hausse >= hausse_pct sur fenetre_min minutes, accélération >= accel_min
+    - palier   : la market cap franchit palier_usd (relevé précédent en dessous), achats/ventes 1 h >= ratio_min
+    - rebond   : après une chute >= chute_pct depuis le plus haut, le prix remonte de rebond_pct depuis le plus bas,
+                 accélération >= accel_min
+    Fenêtre : jusqu'à fenetre_entree_min minutes après le premier signal de base (défaut 360)."""
+    typ = ent["type"]
+    t_max = serie[i0][T] + ent.get("fenetre_entree_min", 360) * 60
+    haut = bas = serie[i0][PX] or 0
+    chute_vue = False
+    for i in range(i0, len(serie)):
+        p = serie[i]
+        if p[T] > t_max:
+            return None
+        if p[PX] <= 0:
+            continue
+        acc = (p[VM5] * 12 / p[VH1]) if p[VH1] else 0
+        if typ == "cassure":
+            fen = ent.get("fenetre_min", 15) * 60
+            j = i
+            while j > 0 and p[T] - serie[j - 1][T] <= fen:
+                j -= 1
+            ref = min((serie[k][PX] for k in range(j, i) if serie[k][PX] > 0), default=0)
+            nouveau_haut = p[PX] > haut
+            if (ref and nouveau_haut and (p[PX] / ref - 1) * 100 >= ent.get("hausse_pct", 20)
+                    and acc >= ent.get("accel_min", 0) and i > i0):
+                return i
+        elif typ == "palier" and i > i0:
+            pp = serie[i - 1]
+            if pp[MC] < ent["palier_usd"] <= p[MC] and p[B1] / max(p[S1], 1) >= ent.get("ratio_min", 0):
+                return i
+        elif typ == "rebond":
+            if haut and (1 - p[PX] / haut) * 100 >= ent.get("chute_pct", 50):
+                if not chute_vue:
+                    chute_vue, bas = True, p[PX]
+            if chute_vue:
+                bas = min(bas, p[PX])
+                if p[PX] >= bas * (1 + ent.get("rebond_pct", 15) / 100) and acc >= ent.get("accel_min", 0):
+                    return i
+        haut = max(haut, p[PX])
+    return None
+
+
 def simuler(serie, chain, r, fin_globale=None, debut=None):
     """Un trade au plus par token et par variante (comme le bot). Renvoie None ou un dict de trade."""
     sig = r["signal"]
@@ -120,7 +164,14 @@ def simuler(serie, chain, r, fin_globale=None, debut=None):
     debut_suivi = debut if debut is not None else serie[0][T]
     t_sig, haut, prec = serie[i0][T], serie[i0][PX], serie[i0][PX]
     entree = None
-    for i in range(i0 + 1, len(serie)):
+    ent = r.get("entree") or {}
+    if ent.get("type") and ent["type"] != "repli":
+        entree = trouver_entree(serie, i0, ent, r)
+        if entree is not None and not filtre_ok(serie[entree], r.get("filtre_entree")):
+            return {"refus": True}
+        if entree is None:
+            return None
+    for i in (range(i0 + 1, len(serie)) if entree is None else ()):
         p = serie[i]
         if p[T] - t_sig > r["entry_window_min"] * 60:
             return None
