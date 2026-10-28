@@ -23,6 +23,7 @@ SORTIE = os.path.join(bt.PUBLIC, "recherche_continue.json")
 RECHARGE_S = 6 * 3600
 PUBLIE_S = 120
 T = bt.T
+RESERVE = {}          # période mise de côté (voir charger_donnees)
 
 
 def maintenant():
@@ -34,7 +35,7 @@ def charger_grille():
         return json.load(f)
 
 
-def charger_donnees(espace):
+def charger_donnees(espace, reserve_jours=0):
     """Deux passes sur les journaux : tokens qui franchissent au moins un des signaux de l'espace, puis leurs séries."""
     import glob
     fichiers = sorted(glob.glob(os.path.join(bt.DATA, "observations-*.jsonl*")))
@@ -65,9 +66,15 @@ def charger_donnees(espace):
     for s in series.values():
         s.sort(key=lambda p: p[T])
     fin = max((s[-1][T] for s in series.values()), default=None)
-    par_chaine = {}
+    # période mise de côté : les tokens apparus pendant les derniers reserve_jours ne sont JAMAIS vus par la recherche ;
+    # seules les meilleures configs y sont rejouées, pour vérification (voir publier)
+    limite = (fin - reserve_jours * 86400) if (fin and reserve_jours) else None
+    par_chaine, reserve = {}, {}
     for (ch, tok), s in series.items():
-        par_chaine.setdefault(ch, []).append((tok, s))
+        cible = reserve if (limite and s[0][T] >= limite) else par_chaine
+        cible.setdefault(ch, []).append((tok, s))
+    RESERVE.clear()
+    RESERVE.update({"limite": limite, "series": reserve})
     # bornes des 3 tranches de temps, propres à chaque chaîne (autant de tokens dans chaque tranche)
     tranches = {}
     for ch, lst in par_chaine.items():
@@ -138,7 +145,7 @@ def empreinte(r):
 
 def evaluer(r, chaine, donnees, mini):
     par_chaine, premier_vu, fin, tranches, _ = donnees
-    c1, c2 = tranches[chaine]
+    c1, c2 = tranches.get(chaine, (0, 0))
     trades = []
     for tok, s in par_chaine.get(chaine, []):
         t = bt.simuler(s, chaine, r, fin, premier_vu.get((chaine, tok)))
@@ -191,7 +198,22 @@ def publier(etat, donnees, rech):
                 deja.add(sig)
                 cl.append(x)
         tranches = donnees[3].get(ch)
+        verif = []
+        res_series = (RESERVE.get("series") or {}).get(ch, [])
+        if res_series:
+            for x in cl[:10]:
+                tr = []
+                for tok, s in res_series:
+                    t = bt.simuler(s, ch, x["cfg"], donnees[2], donnees[1].get((ch, tok)))
+                    if t and not t.get("refus"):
+                        tr.append(t)
+                verif.append({"rang": cl.index(x) + 1, "score_recherche": x["res"]["score"],
+                              "periode_mise_de_cote": bt.stats(tr)})
         out["chaines"][ch] = {
+            "verification_sur_periode_mise_de_cote": {
+                "debut": datetime.fromtimestamp(RESERVE["limite"], timezone.utc).isoformat(timespec="minutes")
+                if RESERVE.get("limite") else None,
+                "tokens": len(res_series), "top10": verif},
             "tokens": len(donnees[0].get(ch, [])),
             "tranches": [datetime.fromtimestamp(t, timezone.utc).isoformat(timespec="minutes") for t in tranches]
             if tranches else None,
@@ -216,7 +238,7 @@ def main():
             continue
         esp, base, mini = rech["espace"], grid["base_regles"], rech.get("min_trades_par_tranche", 15)
         if donnees is None or time.time() - t_charge > RECHARGE_S:
-            donnees, t_charge = charger_donnees(esp), time.time()
+            donnees, t_charge = charger_donnees(esp, rech.get("reserve_jours", 0)), time.time()
             etat["donnees_chargees"] = maintenant()
             for ch, e in etat["chaines"].items():          # nouvelles données : on recalcule le classement
                 if ch in esp["signaux"]:
