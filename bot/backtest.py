@@ -10,7 +10,8 @@ Limites (documentées dans le résultat) :
 - contrôles de sécurité (GoPlus, honeypot, top 10) non rejoués : ils ne sont pas dans les journaux ;
 - au-delà de 6 h de suivi, le token n'est plus journalisé : position close au dernier prix connu.
 """
-import glob, gzip, json, os, shutil, statistics, sys, time
+import glob, gzip, json, os, random, shutil, statistics, sys, time
+from collections import deque
 from datetime import datetime, timezone
 
 DATA = os.environ.get("DEFIBOT_DATA", "/var/lib/defi-bot")
@@ -122,6 +123,8 @@ def trouver_entree(serie, i0, ent, r):
     t_max = serie[i0][T] + ent.get("fenetre_entree_min", 360) * 60
     haut = bas = serie[i0][PX] or 0
     chute_vue = False
+    fen = ent.get("fenetre_min", 15) * 60
+    file_min = deque()          # cassure : indices des relevés, prix croissants (minimum glissant sur la fenêtre)
     for i in range(i0, len(serie)):
         p = serie[i]
         if p[T] > t_max:
@@ -130,12 +133,13 @@ def trouver_entree(serie, i0, ent, r):
             continue
         acc = (p[VM5] * 12 / p[VH1]) if p[VH1] else 0
         if typ == "cassure":
-            fen = ent.get("fenetre_min", 15) * 60
-            j = i
-            while j > 0 and p[T] - serie[j - 1][T] <= fen:
-                j -= 1
-            ref = min((serie[k][PX] for k in range(j, i) if serie[k][PX] > 0), default=0)
+            while file_min and p[T] - serie[file_min[0]][T] > fen:
+                file_min.popleft()
+            ref = serie[file_min[0]][PX] if file_min else 0
             nouveau_haut = p[PX] > haut
+            while file_min and serie[file_min[-1]][PX] >= p[PX]:
+                file_min.pop()
+            file_min.append(i)
             if (ref and nouveau_haut and (p[PX] / ref - 1) * 100 >= ent.get("hausse_pct", 20)
                     and acc >= ent.get("accel_min", 0) and i > i0):
                 return i
@@ -223,6 +227,8 @@ def simuler(serie, chain, r, fin_globale=None, debut=None):
             break
         if p[PX] <= 0:
             continue
+        if qty <= qty0 * 1e-9:
+            raison = "tout vendu"; break
         dernier = p
         gain = (p[PX] / entry_px - 1) * 100
         plus_haut, gain_max = max(plus_haut, p[PX]), max(gain_max, gain)
@@ -263,6 +269,93 @@ def simuler(serie, chain, r, fin_globale=None, debut=None):
             vendre(qty, dernier)
     return {"t": p0[T], "roi": recu / mise - 1, "pnl": recu - mise, "raison": raison,
             "mcap": p0[MC], "age_min": round((p0[T] - p0[CREE]) / 60, 1) if p0[CREE] else None}
+
+
+def tirer_config(rng, espace, base, chaine):
+    """Une configuration au hasard dans l'espace de recherche (backtest_grid.json > recherche)."""
+    e = espace
+    r = json.loads(json.dumps(base))
+    r["chains"] = [chaine]
+    r["signal"] = rng.choice(e["signaux"][chaine])
+    ent = rng.choice(e["entrees"])
+    typ = ent["type"]
+    if typ == "repli":
+        r["entree"] = None
+        for k in ("pullback_min_pct", "pullback_max_pct", "entry_window_min"):
+            r[k] = rng.choice(ent[k])
+        if r["pullback_min_pct"] >= r["pullback_max_pct"]:
+            r["pullback_max_pct"] = r["pullback_min_pct"] + 10
+    else:
+        r["entree"] = {k: (rng.choice(v) if isinstance(v, list) else v) for k, v in ent.items()}
+    r["filtre_entree"] = rng.choice(e["filtres"])
+    for k in ("stop_initial_pct", "tp1_pct", "tp1_sell_frac", "max_minutes_without_tp1"):
+        r[k] = rng.choice(e[k])
+    apres = rng.choice(e["apres_tp1"])
+    r["stop_after_tp1_pct"], r["trail_apres_tp1_pct"] = apres.get("stop", 0), apres.get("suiveur")
+    r["sortie_rapide"] = rng.choice(e["sortie_rapide"])
+    return r
+
+
+def stats(trades):
+    if not trades:
+        return {"n": 0}
+    rois = [t["roi"] for t in trades]
+    return {"n": len(trades), "roi_moyen_pct": round(100 * statistics.mean(rois), 1),
+            "gagnants_pct": round(100 * sum(x > 0 for x in rois) / len(rois)),
+            "pnl_usd": round(sum(t["pnl"] for t in trades), 1)}
+
+
+def recherche(series, premier_vu, fin_globale, grid):
+    """Essaie beaucoup de configurations tirées au hasard. Pour éviter de « coller au passé » : chaque configuration
+    est jugée sur la 1re moitié de la période (apprentissage) puis vérifiée sur la 2e moitié (test, jamais vue)."""
+    cfg = grid["recherche"]
+    rng = random.Random(cfg.get("graine", 1))
+    tous_t = sorted(p[T] for s in series.values() for p in (s[0],))
+    if not tous_t:
+        return
+    coupure = tous_t[len(tous_t) // 2]
+    out = {"genere": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+           "coupure_apprentissage_test": datetime.fromtimestamp(coupure, timezone.utc).isoformat(timespec="minutes"),
+           "methode": "configurations tirées au hasard ; classement sur la 1re moitié (apprentissage), "
+                      "résultat réel = 2e moitié (test). Seul le test compte.",
+           "chaines": {}}
+    for chaine in cfg["chaines"]:
+        essais = []
+        for k_ in range(cfg["n_par_chaine"]):
+            if k_ % 25 == 0:
+                progres(phase=f"recherche {chaine} {k_}/{cfg['n_par_chaine']}")
+            r = tirer_config(rng, cfg["espace"], grid["base_regles"], chaine)
+            tr = []
+            for (ch, tok), s in series.items():
+                if ch != chaine:
+                    continue
+                t = simuler(s, ch, r, fin_globale, premier_vu.get((ch, tok)))
+                if t and not t.get("refus"):
+                    tr.append(t)
+            app, test = stats([t for t in tr if t["t"] < coupure]), stats([t for t in tr if t["t"] >= coupure])
+            essais.append({"apprentissage": app, "test": test,
+                           "config": {k: r.get(k) for k in ("signal", "entree", "pullback_min_pct", "pullback_max_pct",
+                                                           "entry_window_min", "filtre_entree", "stop_initial_pct",
+                                                           "tp1_pct", "tp1_sell_frac", "stop_after_tp1_pct",
+                                                           "trail_apres_tp1_pct", "max_minutes_without_tp1",
+                                                           "sortie_rapide")}})
+        mini = cfg.get("min_trades", 20)
+        ok = [e for e in essais if e["apprentissage"]["n"] >= mini and e["test"]["n"] >= mini]
+        top = sorted(ok, key=lambda e: e["apprentissage"]["roi_moyen_pct"], reverse=True)[:15]
+        robustes = [e for e in ok if e["apprentissage"]["roi_moyen_pct"] > 0 and e["test"]["roi_moyen_pct"] > 0]
+        out["chaines"][chaine] = {
+            "configurations_essayees": len(essais), "avec_assez_de_trades": len(ok),
+            "positives_en_apprentissage": sum(1 for e in ok if e["apprentissage"]["roi_moyen_pct"] > 0),
+            "positives_en_test": sum(1 for e in ok if e["test"]["roi_moyen_pct"] > 0),
+            "positives_sur_les_deux": len(robustes),
+            "meilleures_en_apprentissage": top,
+            "robustes": sorted(robustes, key=lambda e: min(e["apprentissage"]["roi_moyen_pct"],
+                                                          e["test"]["roi_moyen_pct"]), reverse=True)[:15],
+        }
+    tmp = os.path.join(PUBLIC, "backtest_recherche.json.tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, os.path.join(PUBLIC, "backtest_recherche.json"))
 
 
 def resume(trades, refus):
@@ -379,6 +472,8 @@ def main():
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(sortie, f, ensure_ascii=False, indent=1)
     os.replace(tmp, os.path.join(PUBLIC, "backtest.json"))
+    if grid.get("recherche"):
+        recherche(series, premier_vu, fin_globale, grid)
     progres(phase="terminé")
     print(f"backtest : {n_lignes} lignes, {len(series)} tokens, {len(res)} variantes, {sortie['duree_calcul_s']} s")
 
