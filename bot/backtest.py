@@ -10,7 +10,7 @@ Limites (documentées dans le résultat) :
 - contrôles de sécurité (GoPlus, honeypot, top 10) non rejoués : ils ne sont pas dans les journaux ;
 - au-delà de 6 h de suivi, le token n'est plus journalisé : position close au dernier prix connu.
 """
-import glob, gzip, json, os, statistics, sys, time
+import glob, gzip, json, os, shutil, statistics, sys, time
 from datetime import datetime, timezone
 
 DATA = os.environ.get("DEFIBOT_DATA", "/var/lib/defi-bot")
@@ -77,13 +77,15 @@ def releve(r):
     v, tx = r.get("vol") or {}, r.get("txns_h1") or {}
     return (_ts(r["t"]), _f(r.get("price_usd")), _f(r.get("mcap")), _f(r.get("liq_usd")),
             _f(v.get("h1")), _f(v.get("m5")), _f(tx.get("buys")), _f(tx.get("sells")),
-            _f(r.get("pair_created")) / 1000.0, r.get("dex"))
+            _f(r.get("pair_created")) / 1000.0, r.get("dex"), bool(set(r.get("sources") or []) - {"gecko"}))
 
 
-T, PX, MC, LIQ, VH1, VM5, B1, S1, CREE, DEX = range(10)
+T, PX, MC, LIQ, VH1, VM5, B1, S1, CREE, DEX, HG = range(11)
 
 
 def signal_ok(p, sig, chain):
+    if sig.get("exiger_source_hors_gecko") and not p[HG]:
+        return False        # comme le principal : un token vu seulement par GeckoTerminal ne donne pas de signal
     if p[VH1] < sig["min_volume_h1_usd"] or p[LIQ] < sig["min_liquidity_usd"] or p[B1] + p[S1] < sig["min_txns_h1"]:
         return False
     dex = sig.get(f"{chain}_dex_ids") or []
@@ -109,13 +111,13 @@ def filtre_ok(p, fe):
     return True
 
 
-def simuler(serie, chain, r, fin_globale=None):
+def simuler(serie, chain, r, fin_globale=None, debut=None):
     """Un trade au plus par token et par variante (comme le bot). Renvoie None ou un dict de trade."""
     sig = r["signal"]
     i0 = next((i for i, p in enumerate(serie) if signal_ok(p, sig, chain)), None)
     if i0 is None:
         return None
-    debut_suivi = serie[0][T]
+    debut_suivi = debut if debut is not None else serie[0][T]
     t_sig, haut, prec = serie[i0][T], serie[i0][PX], serie[i0][PX]
     entree = None
     for i in range(i0 + 1, len(serie)):
@@ -258,19 +260,21 @@ def main():
     for r in variantes.values():
         for ch in r["chains"]:
             seuils.setdefault(ch, []).append(r["signal"])
-    gardes = set()
+    gardes, premier_vu = {}, {}          # token -> heure du premier signal possible / du premier relevé
     n_lignes = 0
     for row in lignes(fichiers):
         n_lignes += 1
         ch = row.get("chain")
-        if ch not in seuils or (ch, row.get("token")) in gardes:
+        if ch not in seuils:
             continue
+        k = (ch, row.get("token"))
         try:
             p = releve(row)
         except Exception:
             continue
-        if any(signal_ok(p, s, ch) for s in seuils[ch]):
-            gardes.add((ch, row.get("token")))
+        premier_vu[k] = min(premier_vu.get(k, p[T]), p[T])
+        if k not in gardes and any(signal_ok(p, s, ch) for s in seuils[ch]):
+            gardes[k] = p[T]
     progres(phase="passe 2/3 : chargement des séries", tokens_gardes=len(gardes), lignes_total=n_lignes)
     # passe 2 : séries complètes des tokens gardés
     series = {}
@@ -278,9 +282,11 @@ def main():
         k = (row.get("chain"), row.get("token"))
         if k in gardes:
             try:
-                series.setdefault(k, []).append(releve(row))
+                p = releve(row)
             except Exception:
-                pass
+                continue
+            if p[T] >= gardes[k] - 60:      # mémoire : seulement à partir du premier signal possible
+                series.setdefault(k, []).append(p)
     for s in series.values():
         s.sort(key=lambda p: p[T])
     progres(phase="passe 3/3 : simulation des variantes", tokens_series=len(series))
@@ -291,7 +297,7 @@ def main():
         for (ch, _), s in series.items():
             if ch not in r["chains"]:
                 continue
-            t = simuler(s, ch, r, fin_globale)
+            t = simuler(s, ch, r, fin_globale, premier_vu.get((ch, _)))
             if t is None:
                 continue
             if t.get("refus"):
@@ -312,6 +318,8 @@ def main():
         "fichiers": [os.path.basename(f) for f in fichiers], "lignes_lues": n_lignes,
         "periode": periode,
         "tokens_avec_signal": {ch: sum(1 for k in series if k[0] == ch) for ch in seuils},
+        "tokens_observes": {ch: sum(1 for k in premier_vu if k[0] == ch) for ch in seuils},
+        "disque_libre_go": round(shutil.disk_usage(DATA).free / 1e9, 1),
         "limites": __doc__.split("Limites (documentées dans le résultat) :")[1].strip(),
         "variantes": res,
     }
