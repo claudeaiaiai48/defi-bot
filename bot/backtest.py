@@ -310,16 +310,15 @@ def recherche(series, premier_vu, fin_globale, grid):
     est jugée sur la 1re moitié de la période (apprentissage) puis vérifiée sur la 2e moitié (test, jamais vue)."""
     cfg = grid["recherche"]
     rng = random.Random(cfg.get("graine", 1))
-    tous_t = sorted(p[T] for s in series.values() for p in (s[0],))
-    if not tous_t:
-        return
-    coupure = tous_t[len(tous_t) // 2]
     out = {"genere": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-           "coupure_apprentissage_test": datetime.fromtimestamp(coupure, timezone.utc).isoformat(timespec="minutes"),
            "methode": "configurations tirées au hasard ; classement sur la 1re moitié (apprentissage), "
                       "résultat réel = 2e moitié (test). Seul le test compte.",
            "chaines": {}}
     for chaine in cfg["chaines"]:
+        tous_t = sorted(s[0][T] for (ch, _), s in series.items() if ch == chaine)
+        if not tous_t:
+            continue
+        coupure = tous_t[len(tous_t) // 2]          # coupure propre à chaque chaîne (autant de tokens de chaque côté)
         essais = []
         for k_ in range(cfg["n_par_chaine"]):
             if k_ % 25 == 0:
@@ -344,6 +343,7 @@ def recherche(series, premier_vu, fin_globale, grid):
         top = sorted(ok, key=lambda e: e["apprentissage"]["roi_moyen_pct"], reverse=True)[:15]
         robustes = [e for e in ok if e["apprentissage"]["roi_moyen_pct"] > 0 and e["test"]["roi_moyen_pct"] > 0]
         out["chaines"][chaine] = {
+            "coupure_apprentissage_test": datetime.fromtimestamp(coupure, timezone.utc).isoformat(timespec="minutes"),
             "configurations_essayees": len(essais), "avec_assez_de_trades": len(ok),
             "positives_en_apprentissage": sum(1 for e in ok if e["apprentissage"]["roi_moyen_pct"] > 0),
             "positives_en_test": sum(1 for e in ok if e["test"]["roi_moyen_pct"] > 0),
