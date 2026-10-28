@@ -541,6 +541,10 @@ class Paper:
         r5 = m.get("achats_sur_ventes_m5")
         if fe.get("achats_ventes_m5_min") and (r5 is None or r5 < fe["achats_ventes_m5_min"]):
             return f"achats/ventes 5 min {r5} < {fe['achats_ventes_m5_min']}"
+        if fe.get("smart_money_min"):          # wallets « smart money » suivis (config smart_money) qui détiennent déjà le token
+            sm = ((row.get("social") or {}).get("smart_money") or {}).get("nb")
+            if sm is None or sm < fe["smart_money_min"]:
+                return f"smart money {sm} < {fe['smart_money_min']}"
         return None
 
     @staticmethod
