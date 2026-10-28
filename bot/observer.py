@@ -196,6 +196,21 @@ def compresser_anciens(data_dir):
         log(f"compression journaux: {e}")
 
 
+_DISQUE = {"t": 0, "ok": True}
+
+
+def disque_ok(min_go=3):
+    """Journal élargi aux tokens vus seulement par GeckoTerminal (pour le backtest) : coupé automatiquement si le
+    disque du serveur passe sous min_go Go libres. Vérifié toutes les 5 minutes."""
+    if time.time() - _DISQUE["t"] > 300:
+        _DISQUE["t"] = time.time()
+        try:
+            _DISQUE["ok"] = shutil.disk_usage(DATA).free > min_go * 1e9
+        except OSError:
+            _DISQUE["ok"] = True
+    return _DISQUE["ok"]
+
+
 def log(msg):
     print(f"{now().isoformat(timespec='seconds')} {msg}", flush=True)
 
@@ -468,7 +483,7 @@ def main():
                 if (chain, addr) not in tracked:
                     continue
                 row = compact(chain, addr, p, tracked[(chain, addr)]["sources"])
-                if tracked[(chain, addr)]["sources"] != {"gecko"}:
+                if tracked[(chain, addr)]["sources"] != {"gecko"} or disque_ok():
                     append("observations", row)
                 snaps += 1
                 if (chain, addr) not in signaled and is_signal(chain, p, cfg) and (tracked[(chain, addr)]["sources"] - {"gecko"}):
