@@ -538,6 +538,9 @@ class Paper:
             return f"top 10 = {t10} % > {fe['top10_max_pct']} %"
         if fe.get("acceleration_min") and (acc is None or acc < fe["acceleration_min"]):
             return f"accélération {acc} < {fe['acceleration_min']}"
+        r5 = m.get("achats_sur_ventes_m5")
+        if fe.get("achats_ventes_m5_min") and (r5 is None or r5 < fe["achats_ventes_m5_min"]):
+            return f"achats/ventes 5 min {r5} < {fe['achats_ventes_m5_min']}"
         return None
 
     @staticmethod
