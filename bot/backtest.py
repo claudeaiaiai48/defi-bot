@@ -160,6 +160,9 @@ def simuler(serie, chain, r, fin_globale=None):
         qty -= q
 
     raison, dernier = "fin des données", p0
+    trail = r.get("trail_apres_tp1_pct")           # piste 1 : stop suiveur après TP1 (sous le plus haut)
+    sr = r.get("sortie_rapide")                     # piste 3 : sortie si pas de +X % en N minutes
+    plus_haut, gain_max = entry_px, 0.0
     for j in range(entree + 1, len(serie)):
         p, pp = serie[j], serie[j - 1]
         if p[T] - pp[T] > TROU_MORT_S and p[T] - debut_suivi < HORIZON_S:
@@ -169,9 +172,12 @@ def simuler(serie, chain, r, fin_globale=None):
             continue
         dernier = p
         gain = (p[PX] / entry_px - 1) * 100
+        plus_haut, gain_max = max(plus_haut, p[PX]), max(gain_max, gain)
         if not tp1:
             if p[PX] <= stop:
                 vendre(qty, p); raison = "stop"; break
+            if sr and p[T] - p0[T] > sr["minutes"] * 60 and gain_max < sr["gain_min_pct"]:
+                vendre(qty, p); raison = "temps court"; break
             if gain >= r["tp1_pct"]:
                 vendre(qty0 * r["tp1_sell_frac"], p); tp1 = True
                 stop = entry_px * (1 + r["stop_after_tp1_pct"] / 100)
@@ -180,6 +186,8 @@ def simuler(serie, chain, r, fin_globale=None):
             if not tp1 or gain < r["tp2_pct"]:
                 continue
         if not tp2:
+            if trail:
+                stop = max(stop, plus_haut * (1 - trail / 100))
             if p[PX] <= stop:
                 vendre(qty, p); raison = "stop_tp1"; break
             if gain >= r["tp2_pct"]:
