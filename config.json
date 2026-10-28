@@ -89,6 +89,20 @@
     "onchain": {"quote_vente":true,"test_transfert":true,"taxe_max_pct":5,"taxes_payees":true,"exiger_tests":true,"mort_min":60,"retrait_ratio":0.5},
     "solana_check": {"max_perte_pct": 12},
     "variantes": {
+      "SM1": {
+        "label": "SM1 - Solana, règles du principal + entrée seulement si au moins 1 wallet smart money suivi détient déjà le token",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "reset_id": "variante-SM1-2026-10-29",
+        "filtre_entree": {
+          "smart_money_min": 1
+        }
+      },
       "SN7": {
         "label": "SN7 - SN6 + filtre d'entrée : achats/ventes sur 5 min >= 1,65",
         "chains": [
