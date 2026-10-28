@@ -1214,5 +1214,253 @@
     }
    ]
   }
+ },
+ "recherche_continue": {
+  "_note": "Recherche continue (bot/recherche_continue.py, service defi-bot-recherche). Score = rendement moyen de la pire des 3 tranches de temps. Résultat : recherche_continue.json.",
+  "chaines": [
+   "solana",
+   "base"
+  ],
+  "min_trades_par_tranche": 15,
+  "espace": {
+   "signaux": {
+    "solana": [
+     {
+      "min_volume_h1_usd": 50000,
+      "min_liquidity_usd": 15000,
+      "min_txns_h1": 300,
+      "solana_dex_ids": [
+       "pumpswap"
+      ],
+      "base_dex_ids": [],
+      "exiger_source_hors_gecko": true
+     },
+     {
+      "min_volume_h1_usd": 10000,
+      "min_liquidity_usd": 15000,
+      "min_txns_h1": 100,
+      "solana_dex_ids": [
+       "pumpswap"
+      ],
+      "base_dex_ids": []
+     },
+     {
+      "min_volume_h1_usd": 25000,
+      "min_liquidity_usd": 25000,
+      "min_txns_h1": 200,
+      "solana_dex_ids": [
+       "pumpswap"
+      ],
+      "base_dex_ids": []
+     }
+    ],
+    "base": [
+     {
+      "min_volume_h1_usd": 8000,
+      "min_liquidity_usd": 5000,
+      "min_txns_h1": 80,
+      "solana_dex_ids": [],
+      "base_dex_ids": []
+     },
+     {
+      "min_volume_h1_usd": 20000,
+      "min_liquidity_usd": 15000,
+      "min_txns_h1": 150,
+      "solana_dex_ids": [],
+      "base_dex_ids": []
+     }
+    ]
+   },
+   "entrees": [
+    {
+     "type": "repli",
+     "pullback_min_pct": [
+      2,
+      5,
+      10,
+      20
+     ],
+     "pullback_max_pct": [
+      15,
+      30,
+      45
+     ],
+     "entry_window_min": [
+      5,
+      15,
+      30
+     ]
+    },
+    {
+     "type": "cassure",
+     "fenetre_min": [
+      5,
+      15,
+      30
+     ],
+     "hausse_pct": [
+      10,
+      20,
+      40
+     ],
+     "accel_min": [
+      0,
+      2,
+      3
+     ]
+    },
+    {
+     "type": "palier",
+     "palier_usd": [
+      50000,
+      100000,
+      250000,
+      500000
+     ],
+     "ratio_min": [
+      1,
+      1.2,
+      1.5
+     ]
+    },
+    {
+     "type": "rebond",
+     "chute_pct": [
+      30,
+      50,
+      70
+     ],
+     "rebond_pct": [
+      10,
+      20,
+      30
+     ],
+     "accel_min": [
+      0,
+      1.5
+     ]
+    }
+   ],
+   "filtres": [
+    null,
+    {
+     "mcap_min_usd": 50000
+    },
+    {
+     "mcap_min_usd": 100000
+    },
+    {
+     "mcap_min_usd": 250000
+    },
+    {
+     "achats_ventes_h1_min": 1.5
+    },
+    {
+     "acceleration_min": 2
+    },
+    {
+     "liq_min_usd": 30000
+    },
+    {
+     "age_max_min": 30
+    },
+    {
+     "mcap_min_usd": 100000,
+     "achats_ventes_h1_min": 1.3
+    }
+   ],
+   "sorties": {
+    "stop_initial_pct": [
+     -5,
+     -8,
+     -10,
+     -12,
+     -15,
+     -20,
+     -25,
+     -30,
+     -40
+    ],
+    "tp1_pct": [
+     5,
+     8,
+     10,
+     15,
+     20,
+     25,
+     30,
+     40,
+     50,
+     75,
+     100
+    ],
+    "tp1_sell_frac": [
+     0.3,
+     0.5,
+     0.7,
+     0.85,
+     1
+    ],
+    "stop_after_tp1_pct": [
+     -10,
+     -5,
+     0,
+     3,
+     5,
+     8,
+     12,
+     15
+    ],
+    "trail_apres_tp1_pct": [
+     null,
+     5,
+     10,
+     15,
+     20,
+     30
+    ],
+    "tp2_pct": [
+     30,
+     50,
+     80,
+     120,
+     200
+    ],
+    "tp2_sell_frac": [
+     0.2,
+     0.35,
+     0.5,
+     1
+    ],
+    "max_minutes_without_tp1": [
+     5,
+     10,
+     15,
+     30,
+     60,
+     90,
+     180
+    ],
+    "sortie_rapide": [
+     null,
+     {
+      "minutes": 3,
+      "gain_min_pct": 2
+     },
+     {
+      "minutes": 5,
+      "gain_min_pct": 3
+     },
+     {
+      "minutes": 10,
+      "gain_min_pct": 5
+     },
+     {
+      "minutes": 15,
+      "gain_min_pct": 10
+     }
+    ]
+   }
+  }
  }
 }
