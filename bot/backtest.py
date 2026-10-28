@@ -31,12 +31,40 @@ def _ts(s):
     return datetime.fromisoformat(s).timestamp()
 
 
+PROGRES = {"phase": "démarrage", "lignes": 0, "t0": time.time()}
+
+
+def progres(**kw):
+    """Fichier public de suivi du calcul (phase, lignes lues, mémoire) : permet de voir où il en est."""
+    PROGRES.update(kw)
+    try:
+        import resource
+        PROGRES["memoire_max_mo"] = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024)
+    except Exception:
+        pass
+    PROGRES["maj"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    PROGRES["duree_s"] = round(time.time() - PROGRES["t0"])
+    try:
+        os.makedirs(PUBLIC, exist_ok=True)
+        tmp = os.path.join(PUBLIC, "backtest_progress.json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({k: v for k, v in PROGRES.items() if k != "t0"}, f, ensure_ascii=False)
+        os.replace(tmp, os.path.join(PUBLIC, "backtest_progress.json"))
+    except OSError:
+        pass
+
+
 def lignes(fichiers):
+    n = 0
     for fn in fichiers:
         op = gzip.open if fn.endswith(".gz") else open
+        progres(fichier=os.path.basename(fn))
         try:
             with op(fn, "rt", encoding="utf-8") as f:
                 for l in f:
+                    n += 1
+                    if n % 200000 == 0:
+                        progres(lignes=n)
                     try:
                         yield json.loads(l)
                     except ValueError:
@@ -216,6 +244,7 @@ def main():
         for k, x in v.items():
             r[k] = x
         variantes[nom] = r
+    progres(phase="passe 1/3 : repérage des tokens avec signal", fichiers=len(fichiers))
     # passe 1 : tokens qui franchissent au moins un seuil de signal (allège la mémoire)
     seuils = {}
     for r in variantes.values():
@@ -234,6 +263,7 @@ def main():
             continue
         if any(signal_ok(p, s, ch) for s in seuils[ch]):
             gardes.add((ch, row.get("token")))
+    progres(phase="passe 2/3 : chargement des séries", tokens_gardes=len(gardes), lignes_total=n_lignes)
     # passe 2 : séries complètes des tokens gardés
     series = {}
     for row in lignes(fichiers):
@@ -245,6 +275,7 @@ def main():
                 pass
     for s in series.values():
         s.sort(key=lambda p: p[T])
+    progres(phase="passe 3/3 : simulation des variantes", tokens_series=len(series))
     fin_globale = max((s[-1][T] for s in series.values()), default=None)
     res = {}
     for nom, r in variantes.items():
@@ -281,6 +312,7 @@ def main():
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(sortie, f, ensure_ascii=False, indent=1)
     os.replace(tmp, os.path.join(PUBLIC, "backtest.json"))
+    progres(phase="terminé")
     print(f"backtest : {n_lignes} lignes, {len(series)} tokens, {len(res)} variantes, {sortie['duree_calcul_s']} s")
 
 
@@ -288,6 +320,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
+        progres(phase="erreur", erreur=repr(e)[:300])
         os.makedirs(PUBLIC, exist_ok=True)
         with open(os.path.join(PUBLIC, "backtest.json"), "w", encoding="utf-8") as f:
             json.dump({"erreur": repr(e)[:500], "genere": datetime.now(timezone.utc).isoformat()}, f)
