@@ -75,6 +75,23 @@ OnUnitActiveSec=6h
 WantedBy=timers.target
 UNIT
 
+cat > /etc/systemd/system/defi-bot-recherche.service <<'UNIT'
+[Unit]
+Description=defi-bot recherche continue des meilleurs reglages (backtest en boucle)
+After=network-online.target
+[Service]
+User=defibot
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=40%
+MemoryMax=700M
+ExecStart=/usr/bin/python3 /opt/defi-bot/bot/recherche_continue.py
+Restart=always
+RestartSec=60
+[Install]
+WantedBy=multi-user.target
+UNIT
+
 python3 -c "import telethon" 2>/dev/null || {
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3-pip >/dev/null 2>&1 || true
   pip3 install -q --break-system-packages telethon >/dev/null 2>&1 || true
@@ -88,6 +105,8 @@ systemctl enable -q defi-bot defi-bot-web defi-bot-update.timer
 systemctl restart defi-bot defi-bot-web
 systemctl start defi-bot-update.timer
 systemctl enable -q --now defi-bot-backtest.timer || true
+systemctl enable -q defi-bot-recherche || true
+systemctl restart defi-bot-recherche || true
 systemctl start --no-block defi-bot-backtest.service || true
 if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
   ufw allow 22/tcp >/dev/null; ufw allow 8080/tcp >/dev/null
