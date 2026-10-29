@@ -92,6 +92,31 @@ RestartSec=60
 WantedBy=multi-user.target
 UNIT
 
+cat > /etc/systemd/system/defi-bot-copytrade.service <<'UNIT'
+[Unit]
+Description=defi-bot backtest du copy trading (wallets smart money)
+After=network-online.target
+[Service]
+Type=oneshot
+User=defibot
+EnvironmentFile=-/etc/defi-bot/secrets.env
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=30%
+MemoryMax=500M
+ExecStart=/usr/bin/python3 /opt/defi-bot/bot/copytrade_bt.py
+UNIT
+
+cat > /etc/systemd/system/defi-bot-copytrade.timer <<'UNIT'
+[Unit]
+Description=defi-bot backtest du copy trading une fois par jour
+[Timer]
+OnBootSec=30min
+OnUnitActiveSec=24h
+[Install]
+WantedBy=timers.target
+UNIT
+
 python3 -c "import telethon" 2>/dev/null || {
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3-pip >/dev/null 2>&1 || true
   pip3 install -q --break-system-packages telethon >/dev/null 2>&1 || true
@@ -108,6 +133,8 @@ systemctl enable -q --now defi-bot-backtest.timer || true
 systemctl enable -q defi-bot-recherche || true
 systemctl restart defi-bot-recherche || true
 systemctl start --no-block defi-bot-backtest.service || true
+systemctl enable -q --now defi-bot-copytrade.timer || true
+systemctl start --no-block defi-bot-copytrade.service || true
 if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
   ufw allow 22/tcp >/dev/null; ufw allow 8080/tcp >/dev/null
 fi
