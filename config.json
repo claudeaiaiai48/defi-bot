@@ -89,6 +89,43 @@
     "onchain": {"quote_vente":true,"test_transfert":true,"taxe_max_pct":5,"taxes_payees":true,"exiger_tests":true,"mort_min":60,"retrait_ratio":0.5},
     "solana_check": {"max_perte_pct": 12},
     "variantes": {
+      "RC1": {
+        "label": "RC1 - meilleure config de la recherche continue (29/10 00h) : Solana, signal vol 1 h >= 25 000 $ / liq >= 25 000 $ / 200 txns, repli 10-15 % sur 30 min, market cap >= 250 000 $, stop -15 %, tout vendu au TP1 +40 %, sortie si pas +10 % en 15 min, 30 min max sans TP1",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "reset_id": "variante-RC1-2026-10-29",
+        "signal": {
+          "min_volume_h1_usd": 25000,
+          "min_liquidity_usd": 25000,
+          "min_txns_h1": 200,
+          "solana_dex_ids": [
+            "pumpswap"
+          ],
+          "base_dex_ids": []
+        },
+        "pullback_min_pct": 10,
+        "pullback_max_pct": 15,
+        "entry_window_min": 30,
+        "filtre_entree": {
+          "mcap_min_usd": 250000
+        },
+        "stop_initial_pct": -15,
+        "tp1_pct": 40,
+        "tp1_sell_frac": 1,
+        "stop_after_tp1_pct": 8,
+        "tp2_pct": 50,
+        "tp2_sell_frac": 0,
+        "max_minutes_without_tp1": 30,
+        "sortie_rapide": {
+          "minutes": 15,
+          "gain_min_pct": 10
+        }
+      },
       "SM1": {
         "label": "SM1 - Solana, règles du principal + entrée seulement si au moins 1 wallet smart money suivi détient déjà le token",
         "chains": [
