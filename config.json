@@ -86,8 +86,18 @@
         "solana:CABBAGE"
       ]
     },
-    "onchain": {"quote_vente":true,"test_transfert":true,"taxe_max_pct":5,"taxes_payees":true,"exiger_tests":true,"mort_min":60,"retrait_ratio":0.5},
-    "solana_check": {"max_perte_pct": 12},
+    "onchain": {
+      "quote_vente": true,
+      "test_transfert": true,
+      "taxe_max_pct": 5,
+      "taxes_payees": true,
+      "exiger_tests": true,
+      "mort_min": 60,
+      "retrait_ratio": 0.5
+    },
+    "solana_check": {
+      "max_perte_pct": 12
+    },
     "variantes": {
       "RC1": {
         "label": "RC1 - meilleure config de la recherche continue (29/10 00h) : Solana, signal vol 1 h >= 25 000 $ / liq >= 25 000 $ / 200 txns, repli 10-15 % sur 30 min, market cap >= 250 000 $, stop -15 %, tout vendu au TP1 +40 %, sortie si pas +10 % en 15 min, 30 min max sans TP1",
@@ -677,23 +687,499 @@
           "base_dex_ids": []
         }
       },
-      "OC1": {"label":"OC1 - clone de E, contrôles on-chain : honeypot (swaps à sens unique), pool mort 60 min, retrait de liquidité","chains":["base"],"reserves":{"base":300},"gas_reserve_usd":{"base":2},"refill":{"seuil_usd":100,"montant_usd":300,"repartition":{"base":300}},"securite":{"require_creator_holding":false,"max_top10_pct":40},"pullback_min_pct":2,"pullback_max_pct":30,"entry_window_min":20,"signal":{"min_volume_h1_usd":8000,"min_liquidity_usd":5000,"min_txns_h1":80,"solana_dex_ids":[],"base_dex_ids":[]},"onchain":{"quote_vente":true,"test_transfert":true,"taxe_max_pct":5,"taxes_payees":true,"exiger_tests":true,"sens_unique_min_swaps":20,"mort_min":60,"retrait_ratio":0.5}},
-      "OC2": {"label":"OC2 - clone de E, on-chain sortie seule : pool mort 60 min + retrait de liquidité (pas de test honeypot à l'entrée)","chains":["base"],"reserves":{"base":300},"gas_reserve_usd":{"base":2},"refill":{"seuil_usd":100,"montant_usd":300,"repartition":{"base":300}},"securite":{"require_creator_holding":false,"max_top10_pct":40},"pullback_min_pct":2,"pullback_max_pct":30,"entry_window_min":20,"signal":{"min_volume_h1_usd":8000,"min_liquidity_usd":5000,"min_txns_h1":80,"solana_dex_ids":[],"base_dex_ids":[]},"onchain":{"quote_vente":true,"test_transfert":true,"taxe_max_pct":5,"taxes_payees":true,"exiger_tests":true,"mort_min":60,"retrait_ratio":0.5}},
-      "OC3": {"label":"OC3 - clone de E, on-chain complet : honeypot (sens unique), simulation de vente (quoter v4), pool mort 60 min, retrait de liquidité","chains":["base"],"reserves":{"base":300},"gas_reserve_usd":{"base":2},"refill":{"seuil_usd":100,"montant_usd":300,"repartition":{"base":300}},"securite":{"require_creator_holding":false,"max_top10_pct":40},"pullback_min_pct":2,"pullback_max_pct":30,"entry_window_min":20,"signal":{"min_volume_h1_usd":8000,"min_liquidity_usd":5000,"min_txns_h1":80,"solana_dex_ids":[],"base_dex_ids":[]},"onchain":{"quote_vente":true,"test_transfert":true,"taxe_max_pct":5,"taxes_payees":true,"exiger_tests":true,"sens_unique_min_swaps":20,"mort_min":60,"retrait_ratio":0.5}},
-      "SJ1": {"label":"SJ1 - clone de SN6 (stop -35 %), prix Jupiter toutes les 4 s (mode rapide) pour mesurer l'apport de la vitesse","chains":["solana"],"reserves":{"solana":300},"refill":null,"stop_initial_pct":-35,"rapide":true,"prix_jupiter":true},
-      "MB1": {"label":"MB1 - clone de E, moonbag intelligente : sortie a -35 % depuis le plus haut","chains":["base"],"reserves":{"base":300},"gas_reserve_usd":{"base":2},"refill":{"seuil_usd":100,"montant_usd":300,"repartition":{"base":300}},"securite":{"require_creator_holding":false,"max_top10_pct":40},"pullback_min_pct":2,"pullback_max_pct":30,"entry_window_min":20,"signal":{"min_volume_h1_usd":8000,"min_liquidity_usd":5000,"min_txns_h1":80,"solana_dex_ids":[],"base_dex_ids":[]},"moonbag_intelligente":{"trail_pct":35}},
-    "MB2": {"label":"MB2 - clone de E, moonbag : paliers x2/x3/x5 + sortie a -35 % du plus haut","chains":["base"],"reserves":{"base":300},"gas_reserve_usd":{"base":2},"refill":{"seuil_usd":100,"montant_usd":300,"repartition":{"base":300}},"securite":{"require_creator_holding":false,"max_top10_pct":40},"pullback_min_pct":2,"pullback_max_pct":30,"entry_window_min":20,"signal":{"min_volume_h1_usd":8000,"min_liquidity_usd":5000,"min_txns_h1":80,"solana_dex_ids":[],"base_dex_ids":[]},"moonbag_intelligente":{"trail_pct":35,"ladder":[[2,0.3],[3,0.3],[5,0.4]]}},
-    "MB3": {"label":"MB3 - clone de E, moonbag : sortie si liquidite -40 % ou apres 4 h","chains":["base"],"reserves":{"base":300},"gas_reserve_usd":{"base":2},"refill":{"seuil_usd":100,"montant_usd":300,"repartition":{"base":300}},"securite":{"require_creator_holding":false,"max_top10_pct":40},"pullback_min_pct":2,"pullback_max_pct":30,"entry_window_min":20,"signal":{"min_volume_h1_usd":8000,"min_liquidity_usd":5000,"min_txns_h1":80,"solana_dex_ids":[],"base_dex_ids":[]},"moonbag_intelligente":{"liq_chute_pct":40,"max_min":240}},
-    "MB4": {"label":"MB4 - clone de E, moonbag 25 % de la position + sortie a -40 % du plus haut","chains":["base"],"reserves":{"base":300},"gas_reserve_usd":{"base":2},"refill":{"seuil_usd":100,"montant_usd":300,"repartition":{"base":300}},"securite":{"require_creator_holding":false,"max_top10_pct":40},"pullback_min_pct":2,"pullback_max_pct":30,"entry_window_min":20,"signal":{"min_volume_h1_usd":8000,"min_liquidity_usd":5000,"min_txns_h1":80,"solana_dex_ids":[],"base_dex_ids":[]},"moonbag_frac":0.25,"moonbag_intelligente":{"trail_pct":40}},
-    "RUG1": {"label":"RUG1 - clone de E, refuse les lancements a signature de rug (lot >= 6 adresses ou operateur connu)","chains":["base"],"reserves":{"base":300},"gas_reserve_usd":{"base":2},"refill":{"seuil_usd":100,"montant_usd":300,"repartition":{"base":300}},"securite":{"require_creator_holding":false,"max_top10_pct":40},"pullback_min_pct":2,"pullback_max_pct":30,"entry_window_min":20,"signal":{"min_volume_h1_usd":8000,"min_liquidity_usd":5000,"min_txns_h1":80,"solana_dex_ids":[],"base_dex_ids":[]},"filtre_rug":{"lot_min":6}},
-    "RUG2": {"label":"RUG2 - clone de E, filtre rug plus strict (lot >= 3 adresses ou operateur connu)","chains":["base"],"reserves":{"base":300},"gas_reserve_usd":{"base":2},"refill":{"seuil_usd":100,"montant_usd":300,"repartition":{"base":300}},"securite":{"require_creator_holding":false,"max_top10_pct":40},"pullback_min_pct":2,"pullback_max_pct":30,"entry_window_min":20,"signal":{"min_volume_h1_usd":8000,"min_liquidity_usd":5000,"min_txns_h1":80,"solana_dex_ids":[],"base_dex_ids":[]},"filtre_rug":{"lot_min":3}},
-    "SN1": {"label":"SN1 - Solana : scalp (stop -10 %, TP1 +15 % vendu 70 %, TP2 +40 %, sortie 30 min)","chains":["solana"],"reserves":{"solana":300},"refill":null,"stop_initial_pct":-10,"tp1_pct":15,"tp1_sell_frac":0.7,"stop_after_tp1_pct":3,"tp2_pct":40,"tp2_sell_frac":0.25,"moonbag_frac":0.05,"max_minutes_without_tp1":30},
-    "SN2": {"label":"SN2 - Solana : achat apres rebond de 3 % depuis le plus bas (fenetre 10 min, repli 8-35 %), sorties du principal","chains":["solana"],"reserves":{"solana":300},"refill":null,"rebond_pct":3,"pullback_min_pct":8,"pullback_max_pct":35,"entry_window_min":10},
-    "SN3": {"label":"SN3 - Solana : rebond + scalp","chains":["solana"],"reserves":{"solana":300},"refill":null,"rebond_pct":3,"pullback_min_pct":8,"pullback_max_pct":35,"entry_window_min":10,"stop_initial_pct":-10,"tp1_pct":15,"tp1_sell_frac":0.7,"stop_after_tp1_pct":3,"tp2_pct":40,"tp2_sell_frac":0.25,"moonbag_frac":0.05,"max_minutes_without_tp1":30},
-    "SN4": {"label":"SN4 - Solana : gros pools (liq >= 50k, vol h1 >= 100k, txns >= 500, DEX larges), sorties du principal","chains":["solana"],"reserves":{"solana":300},"refill":null,"signal":{"min_volume_h1_usd":100000,"min_liquidity_usd":50000,"min_txns_h1":500,"solana_dex_ids":["pumpswap","raydium","meteora","orca"],"base_dex_ids":[]}},
-    "SN5": {"label":"SN5 - Solana : rebond + scalp + mise fragile + sortie sur faiblesse","chains":["solana"],"reserves":{"solana":300},"refill":null,"rebond_pct":3,"pullback_min_pct":8,"pullback_max_pct":35,"entry_window_min":10,"stop_initial_pct":-10,"tp1_pct":15,"tp1_sell_frac":0.7,"stop_after_tp1_pct":3,"tp2_pct":40,"tp2_sell_frac":0.25,"moonbag_frac":0.05,"max_minutes_without_tp1":30,"mise_fragile":{"top10_pct":15,"createur":true,"facteur":0.5},"sortie_faiblesse":{"liq_chute_pct":30,"min_ventes_m5":15,"ventes_sur_achats":2.5}},
-    "SN6": {"label":"SN6 - Solana : stop large -35 % (45 % des tokens stoppes rebondissent), reste du principal","chains":["solana"],"reserves":{"solana":300},"refill":null,"stop_initial_pct":-35},
-    "E1": {
+      "OC1": {
+        "label": "OC1 - clone de E, contrôles on-chain : honeypot (swaps à sens unique), pool mort 60 min, retrait de liquidité",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "onchain": {
+          "quote_vente": true,
+          "test_transfert": true,
+          "taxe_max_pct": 5,
+          "taxes_payees": true,
+          "exiger_tests": true,
+          "sens_unique_min_swaps": 20,
+          "mort_min": 60,
+          "retrait_ratio": 0.5
+        }
+      },
+      "OC2": {
+        "label": "OC2 - clone de E, on-chain sortie seule : pool mort 60 min + retrait de liquidité (pas de test honeypot à l'entrée)",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "onchain": {
+          "quote_vente": true,
+          "test_transfert": true,
+          "taxe_max_pct": 5,
+          "taxes_payees": true,
+          "exiger_tests": true,
+          "mort_min": 60,
+          "retrait_ratio": 0.5
+        }
+      },
+      "OC3": {
+        "label": "OC3 - clone de E, on-chain complet : honeypot (sens unique), simulation de vente (quoter v4), pool mort 60 min, retrait de liquidité",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "onchain": {
+          "quote_vente": true,
+          "test_transfert": true,
+          "taxe_max_pct": 5,
+          "taxes_payees": true,
+          "exiger_tests": true,
+          "sens_unique_min_swaps": 20,
+          "mort_min": 60,
+          "retrait_ratio": 0.5
+        }
+      },
+      "SJ1": {
+        "label": "SJ1 - clone de SN6 (stop -35 %), prix Jupiter toutes les 4 s (mode rapide) pour mesurer l'apport de la vitesse",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "stop_initial_pct": -35,
+        "rapide": true,
+        "prix_jupiter": true
+      },
+      "MB1": {
+        "label": "MB1 - clone de E, moonbag intelligente : sortie a -35 % depuis le plus haut",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "moonbag_intelligente": {
+          "trail_pct": 35
+        }
+      },
+      "MB2": {
+        "label": "MB2 - clone de E, moonbag : paliers x2/x3/x5 + sortie a -35 % du plus haut",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "moonbag_intelligente": {
+          "trail_pct": 35,
+          "ladder": [
+            [
+              2,
+              0.3
+            ],
+            [
+              3,
+              0.3
+            ],
+            [
+              5,
+              0.4
+            ]
+          ]
+        }
+      },
+      "MB3": {
+        "label": "MB3 - clone de E, moonbag : sortie si liquidite -40 % ou apres 4 h",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "moonbag_intelligente": {
+          "liq_chute_pct": 40,
+          "max_min": 240
+        }
+      },
+      "MB4": {
+        "label": "MB4 - clone de E, moonbag 25 % de la position + sortie a -40 % du plus haut",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "moonbag_frac": 0.25,
+        "moonbag_intelligente": {
+          "trail_pct": 40
+        }
+      },
+      "RUG1": {
+        "label": "RUG1 - clone de E, refuse les lancements a signature de rug (lot >= 6 adresses ou operateur connu)",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "filtre_rug": {
+          "lot_min": 6
+        }
+      },
+      "RUG2": {
+        "label": "RUG2 - clone de E, filtre rug plus strict (lot >= 3 adresses ou operateur connu)",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "filtre_rug": {
+          "lot_min": 3
+        }
+      },
+      "SN1": {
+        "label": "SN1 - Solana : scalp (stop -10 %, TP1 +15 % vendu 70 %, TP2 +40 %, sortie 30 min)",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "stop_initial_pct": -10,
+        "tp1_pct": 15,
+        "tp1_sell_frac": 0.7,
+        "stop_after_tp1_pct": 3,
+        "tp2_pct": 40,
+        "tp2_sell_frac": 0.25,
+        "moonbag_frac": 0.05,
+        "max_minutes_without_tp1": 30
+      },
+      "SN2": {
+        "label": "SN2 - Solana : achat apres rebond de 3 % depuis le plus bas (fenetre 10 min, repli 8-35 %), sorties du principal",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "rebond_pct": 3,
+        "pullback_min_pct": 8,
+        "pullback_max_pct": 35,
+        "entry_window_min": 10
+      },
+      "SN3": {
+        "label": "SN3 - Solana : rebond + scalp",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "rebond_pct": 3,
+        "pullback_min_pct": 8,
+        "pullback_max_pct": 35,
+        "entry_window_min": 10,
+        "stop_initial_pct": -10,
+        "tp1_pct": 15,
+        "tp1_sell_frac": 0.7,
+        "stop_after_tp1_pct": 3,
+        "tp2_pct": 40,
+        "tp2_sell_frac": 0.25,
+        "moonbag_frac": 0.05,
+        "max_minutes_without_tp1": 30
+      },
+      "SN4": {
+        "label": "SN4 - Solana : gros pools (liq >= 50k, vol h1 >= 100k, txns >= 500, DEX larges), sorties du principal",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "signal": {
+          "min_volume_h1_usd": 100000,
+          "min_liquidity_usd": 50000,
+          "min_txns_h1": 500,
+          "solana_dex_ids": [
+            "pumpswap",
+            "raydium",
+            "meteora",
+            "orca"
+          ],
+          "base_dex_ids": []
+        }
+      },
+      "SN5": {
+        "label": "SN5 - Solana : rebond + scalp + mise fragile + sortie sur faiblesse",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "rebond_pct": 3,
+        "pullback_min_pct": 8,
+        "pullback_max_pct": 35,
+        "entry_window_min": 10,
+        "stop_initial_pct": -10,
+        "tp1_pct": 15,
+        "tp1_sell_frac": 0.7,
+        "stop_after_tp1_pct": 3,
+        "tp2_pct": 40,
+        "tp2_sell_frac": 0.25,
+        "moonbag_frac": 0.05,
+        "max_minutes_without_tp1": 30,
+        "mise_fragile": {
+          "top10_pct": 15,
+          "createur": true,
+          "facteur": 0.5
+        },
+        "sortie_faiblesse": {
+          "liq_chute_pct": 30,
+          "min_ventes_m5": 15,
+          "ventes_sur_achats": 2.5
+        }
+      },
+      "SN6": {
+        "label": "SN6 - Solana : stop large -35 % (45 % des tokens stoppes rebondissent), reste du principal",
+        "chains": [
+          "solana"
+        ],
+        "reserves": {
+          "solana": 300
+        },
+        "refill": null,
+        "stop_initial_pct": -35
+      },
+      "E1": {
         "label": "E1 - clone de E, mise divisee par 2 si top10 > 15 % ou createur detenteur",
         "chains": [
           "base"
@@ -853,6 +1339,200 @@
           "liq_chute_pct": 30,
           "min_ventes_m5": 15,
           "ventes_sur_achats": 2.5
+        }
+      },
+      "RUG3": {
+        "label": "RUG3 - clone de E1 avec filtre rug (lot >= 6 adresses ou operateur connu) : mise divisee par 2 si fragile",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "mise_fragile": {
+          "top10_pct": 15,
+          "createur": true,
+          "facteur": 0.5
+        },
+        "filtre_rug": {
+          "lot_min": 6
+        }
+      },
+      "RUG4": {
+        "label": "RUG4 - clone de E2 avec filtre rug (lot >= 6 adresses ou operateur connu) : sortie anticipee sur faiblesse",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "sortie_faiblesse": {
+          "liq_chute_pct": 30,
+          "min_ventes_m5": 15,
+          "ventes_sur_achats": 2.5
+        },
+        "filtre_rug": {
+          "lot_min": 6
+        }
+      },
+      "RUG5": {
+        "label": "RUG5 - clone de E3 avec filtre rug (lot >= 6 adresses ou operateur connu) : stops simules en ordre declencheur",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "stop_ordre": {
+          "glissement_pct": 3
+        },
+        "filtre_rug": {
+          "lot_min": 6
+        }
+      },
+      "RUG6": {
+        "label": "RUG6 - clone de X avec filtre rug (lot >= 6 adresses ou operateur connu) : controle rapide 4 s",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 40
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "rapide": true,
+        "filtre_rug": {
+          "lot_min": 6
+        }
+      },
+      "RUG7": {
+        "label": "RUG7 - clone de H avec filtre rug (lot >= 6 adresses ou operateur connu) : securite stricte top10 25 %",
+        "chains": [
+          "base"
+        ],
+        "reserves": {
+          "base": 300
+        },
+        "gas_reserve_usd": {
+          "base": 2
+        },
+        "refill": {
+          "seuil_usd": 100,
+          "montant_usd": 300,
+          "repartition": {
+            "base": 300
+          }
+        },
+        "securite": {
+          "require_creator_holding": false,
+          "max_top10_pct": 25
+        },
+        "pullback_min_pct": 2,
+        "pullback_max_pct": 30,
+        "entry_window_min": 20,
+        "signal": {
+          "min_volume_h1_usd": 8000,
+          "min_liquidity_usd": 5000,
+          "min_txns_h1": 80,
+          "solana_dex_ids": [],
+          "base_dex_ids": []
+        },
+        "filtre_rug": {
+          "lot_min": 6
         }
       }
     },
