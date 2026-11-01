@@ -298,3 +298,60 @@ def pret(pid, token, dest, prix, age, v4=True):
     if v4:
         r.append(a_vente(pid, token, prix, age))
     return all(x is not ATTENTE for x in r)
+
+
+# --- Qui contrôle la liquidité (anti-rug « retrait de liquidité ») ------------------------------------------------
+POSMANAGER = "0x7c5f5a4bbd8fd63184577525326123b519429bdc"     # PositionManager Uniswap v4 sur Base (positions NFT)
+_LP = {}
+
+
+def liquidite(pool_id, age_min):
+    """Part de la liquidité d'un pool v4 qu'un simple wallet peut retirer seul à tout moment.
+    On relit tous les ajouts/retraits de liquidité depuis la création du pool. Une position créée via le PositionManager
+    est un NFT : si son propriétaire est un wallet ordinaire (pas un contrat de verrouillage, pas une adresse de
+    destruction), il peut la retirer. Renvoie {"hooks", "positions", "part_retirable"} ou None si on ne sait pas."""
+    c = _LP.get(pool_id)
+    if c and time.time() - c[0] < 600:
+        return c[1]
+    k = _cle(pool_id, age_min)
+    if not k:
+        return None
+    bn = _bloc()
+    debut = bn - int(age_min * 30) - 600
+    logs, to = [], bn
+    while to > max(debut, bn - 8500 * 6):
+        fr = max(debut, to - 8500)
+        logs += _rpc("eth_getLogs", [{"address": POOLMANAGER, "fromBlock": hex(fr), "toBlock": hex(to),
+                                      "topics": [MODLIQ, pool_id]}], timeout=10)
+        to = fr - 1
+    pos = {}                                  # (sender, salt) -> liquidité nette
+    for l in logs:
+        w = _mots(l["data"])
+        cle = ("0x" + l["topics"][2][26:], w[3])
+        pos[cle] = pos.get(cle, 0) + _signe(w[2])
+    total = sum(v for v in pos.values() if v > 0)
+    if total <= 0:
+        return None
+    retirable = 0
+    morts = {"0x" + "0" * 40, "0x000000000000000000000000000000000000dead"}
+    for (sender, salt), liq in pos.items():
+        if liq <= 0:
+            continue
+        if sender.lower() != POSMANAGER:
+            continue                          # position gérée par un autre contrat (hook, plateforme) : pas comptée
+        try:
+            owner = "0x" + _rpc("eth_call", [{"to": POSMANAGER, "data": "0x6352211e" + salt}, "latest"])[26:]
+        except RuntimeError:
+            continue                          # NFT détruit : liquidité bloquée pour toujours
+        if owner.lower() in morts:
+            continue
+        if _rpc("eth_getCode", [owner, "latest"]) in ("0x", "0x0"):
+            retirable += liq                  # wallet ordinaire : peut retirer quand il veut
+    res = {"hooks": k["hooks"], "positions": sum(1 for v in pos.values() if v > 0),
+           "part_retirable": round(retirable / total, 3)}
+    _LP[pool_id] = (time.time(), res)
+    return res
+
+
+def a_liquidite(pid, age):
+    return _async(("lp", pid), lambda: liquidite(pid, age), 600)
