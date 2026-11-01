@@ -310,6 +310,9 @@ class Paper:
                 oc0 = c.get("onchain")
                 if oc0 and oc0.get("exiger_tests") and p["row"]["chain"] == "base" and not self._oc_pret(pair):
                     return          # vérifications on-chain en cours (travailleurs) : le token reste en attente
+                if oc0 and oc0.get("lp_retirable_max") is not None and p["row"]["chain"] == "base" \
+                        and self._oc_lp(pair) == "attente":
+                    return          # lecture des positions de liquidité en cours
                 st["pending"].pop(key)
                 fr = c.get("filtre_rug")           # wallet de test : refus des lancements à signature de rug (lot de tokens / opérateur connu)
                 if fr and p["row"]["chain"] == "base":
@@ -355,6 +358,17 @@ class Paper:
                     if raison:
                         events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
                                        "reason": f"filtre d'entrée : {raison}"})
+                        return
+                if oc and oc.get("lp_retirable_max") is not None and p["row"]["chain"] == "base":
+                    lp = self._oc_lp(pair)
+                    if not isinstance(lp, dict):
+                        events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                       "reason": "liquidité : contrôle impossible (pool non v4 ou RPC indisponible)"})
+                        return
+                    if not int(lp["hooks"], 16) and lp["part_retirable"] >= oc["lp_retirable_max"]:
+                        events.append({"type": "refus", "key": key, "symbol": p["row"]["symbol"],
+                                       "reason": f"liquidité retirable par un seul wallet : {round(100 * lp['part_retirable'])} % "
+                                                 f"({lp['positions']} position(s), pas de hook)"})
                         return
                 if sc and p["row"]["chain"] == "solana":
                     pr = self._sol_perte(p["row"]["token"])
@@ -463,6 +477,20 @@ class Paper:
                 return None
             r = onchain.a_transfert(tok, dest)
             return None if r is onchain.ATTENTE else r
+        except Exception:
+            return None
+
+    @staticmethod
+    def _oc_lp(pair):
+        """Part de la liquidité retirable par un seul wallet (module onchain) : dict, "attente", ou None."""
+        pid = (pair.get("pairAddress") or "") if pair else ""
+        if not (pid.startswith("0x") and len(pid) == 66):
+            return None
+        try:
+            import onchain
+            age = (time.time() * 1000 - float(pair.get("pairCreatedAt") or 0)) / 60000
+            r = onchain.a_liquidite(pid, age)
+            return "attente" if r is onchain.ATTENTE else r
         except Exception:
             return None
 
