@@ -98,6 +98,9 @@
     "solana_check": {
       "max_perte_pct": 12
     },
+    "filtre_rug": {
+      "lot_min": 6
+    },
     "variantes": {
       "RCB3": {
         "label": "RCB3 - jumeau de RCB2 + contrôle de la liquidité : refus si, dans un pool v4 sans hook, 90 % ou plus de la liquidité appartient à des wallets ordinaires qui peuvent la retirer seuls (schéma des faux honeypots MECHA, UFP… : 1 position, 100 % retirée 45 à 74 min après)",
