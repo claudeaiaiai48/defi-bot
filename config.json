@@ -117,7 +117,8 @@
         "reset_id": "variante-RCB4-2026-11-02",
         "securite": {
           "require_creator_holding": false,
-          "max_top10_pct": 75
+          "max_top10_pct": 75,
+          "max_top1_pct": 15
         },
         "signal": {
           "min_volume_h1_usd": 8000,
