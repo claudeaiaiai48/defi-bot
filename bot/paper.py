@@ -423,14 +423,14 @@ class Paper:
             return True
 
     @staticmethod
-    def _oc(pair):
+    def _oc(pair, rapide=False):
         """Etat on-chain d'un pool Uniswap v4 (module onchain) ; None si le pool n'est pas v4 ou si le RPC échoue."""
         pid = (pair.get("pairAddress") or "") if pair else ""
         if not (pid.startswith("0x") and len(pid) == 66):
             return None
         try:
             import onchain
-            r = onchain.a_etat(pid)
+            r = onchain.a_etat_rapide(pid) if rapide else onchain.a_etat(pid)
             return None if r is onchain.ATTENTE else r
         except Exception:
             return None
@@ -688,7 +688,7 @@ class Paper:
                     events.append({"type": "taxe de vente", "key": key, "symbol": pos.get("symbol"), "taxe_pct": tx})
                     pos["qty"] = 0
                     return self._close(key, "taxe de vente", events)
-            e = self._oc(pair)
+            e = self._oc(pair, oc.get("rapide"))
             if e:
                 if oc.get("retrait_ratio") and e.get("retrait_ratio") is not None and e["retrait_ratio"] >= oc["retrait_ratio"]:
                     events.append({"type": "retrait de liquidité", "key": key, "symbol": pos.get("symbol"),
