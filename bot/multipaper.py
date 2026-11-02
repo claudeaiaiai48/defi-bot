@@ -3,18 +3,30 @@
 Chaque variante est un Paper indépendant (son propre état, son propre capital) dont seules les règles de sortie
 changent (config paper.variantes). Les conditions d'entrée (signaux, sécurité, repli) sont identiques.
 """
-import copy
+import copy, functools, threading
 from paper import Paper
+
+
+def _verrou(f, lock):
+    @functools.wraps(f)
+    def g(*a, **k):
+        with lock:
+            return f(*a, **k)
+    return g
 
 
 class MultiPaper:
     def __init__(self, data_dir, pcfg):
         self.data_dir = data_dir
+        self.lock = threading.RLock()       # le fil de surveillance rapide et la boucle principale se partagent les portefeuilles
         self.main = Paper(data_dir, pcfg)
         self.variants = {}
         self.trans = {}         # (variante, chaîne, adresse) -> dernier événement « sécurité transitoire »
         self.seen = {}          # variante -> {(chaine, adresse)} déjà évalués avec ses propres seuils de signal
         self._sync(pcfg)
+        for n in ("watched_keys", "open_keys", "rapide_keys", "update_open", "dispatch", "own_signal_variants", "signal",
+                  "risk_check", "save", "publish", "surv_update", "surv_keys"):
+            setattr(self, n, _verrou(getattr(self, n), self.lock))
 
     # ----- configuration -----
     def _vcfg(self, name, pcfg, over):
@@ -42,8 +54,9 @@ class MultiPaper:
 
     @cfg.setter
     def cfg(self, pcfg):
-        self.main.cfg = pcfg
-        self._sync(pcfg)
+        with self.lock:
+            self.main.cfg = pcfg
+            self._sync(pcfg)
 
     @property
     def state(self):
@@ -89,24 +102,24 @@ class MultiPaper:
                     seen.append(k)
         return seen
 
-    def update_open(self, key, pair, events, jup_price=None):
+    def update_open(self, key, pair, events, jup_price=None, alt=None):
         for name, p in self._all():
             if key in p.state["open"]:
                 n = len(events)
-                use = pair
+                use = alt if (alt and p.cfg.get("prix_chaine")) else pair     # prix lu sur la chaîne (wallets prix_chaine)
                 if jup_price and pair and p.cfg.get("prix_jupiter"):
                     use = {**pair, "priceUsd": str(jup_price)}     # portefeuille de test : prix Jupiter (plus rapide)
                 p.update(key, use, events)
                 self._tag(events, n, name)
 
-    def dispatch(self, key, pair, events, jup_price=None, rapide=None):
+    def dispatch(self, key, pair, events, jup_price=None, rapide=None, alt=None):
         for name, p in self._all():
             if rapide is not None and bool(p.cfg.get("rapide")) != rapide:
                 continue
             n = len(events)
-            use = pair
-            if jup_price and pair and p.cfg.get("rapide") and p.cfg.get("prix_jupiter"):
-                use = {**pair, "priceUsd": str(jup_price)}      # portefeuille rapide : prix Jupiter aussi pour les entrées
+            use = alt if (alt and p.cfg.get("prix_chaine") and key in p.state["open"]) else pair
+            if jup_price and use and p.cfg.get("rapide") and p.cfg.get("prix_jupiter"):
+                use = {**use, "priceUsd": str(jup_price)}      # portefeuille rapide : prix Jupiter aussi pour les entrées
             if key in p.state["open"]:
                 p.update(key, use, events)
             elif key in p.state["pending"]:
@@ -114,6 +127,26 @@ class MultiPaper:
             elif key in p.state.get("suivi", {}):
                 p.update_suivi(key, pair, events)
             self._tag(events, n, name)
+
+    # ----- surveillance rapide indépendante (fil dédié) : positions ouvertes des wallets "surveillance_rapide" -----
+    def surv_keys(self, flag="surveillance_rapide"):
+        seen = []
+        for _, p in self._all():
+            if p.cfg.get(flag):
+                for k in p.state["open"]:
+                    if k not in seen:
+                        seen.append(k)
+        return seen
+
+    def surv_update(self, key, pair, events, jup_price=None, alt=None):
+        for name, p in self._all():
+            if p.cfg.get("surveillance_rapide") and key in p.state["open"]:
+                n = len(events)
+                use = alt if (alt and p.cfg.get("prix_chaine")) else pair
+                if jup_price and use and p.cfg.get("prix_jupiter"):
+                    use = {**use, "priceUsd": str(jup_price)}
+                p.update(key, use, events)
+                self._tag(events, n, name)
 
     def own_signal_variants(self):
         """Variantes qui ont leurs propres seuils de signal (config paper.variantes.X.signal)."""
