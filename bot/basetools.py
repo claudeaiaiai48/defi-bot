@@ -76,4 +76,5 @@ def holders_onchain(token, exclude=(), top_n=10):
     skip = {ZERO, DEAD, token} | {a.lower() for a in exclude} | _pools_dexscreener(token)
     pos = sorted((v for a, v in bal.items() if v > 0 and a not in skip), reverse=True)
     return {"top10_pct": round(100 * sum(pos[:top_n]) / supply, 1), "holders": len(pos),
+            "top1_pct": round(100 * pos[0] / supply, 1) if pos else 0,
             "blocs": bn - hi}
