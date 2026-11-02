@@ -122,6 +122,8 @@ class MultiPaper:
                 use = {**use, "priceUsd": str(jup_price)}      # portefeuille rapide : prix Jupiter aussi pour les entrées
             if key in p.state["open"]:
                 p.update(key, use, events)
+            elif key in p.state.get("achats_diff", {}):
+                p.update_achat(key, use, events)
             elif key in p.state["pending"]:
                 p.update_pending(key, use, events)
             elif key in p.state.get("suivi", {}):
