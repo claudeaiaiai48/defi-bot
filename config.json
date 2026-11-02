@@ -154,8 +154,11 @@
           "mort_min": 60,
           "retrait_ratio": 0.5,
           "sens_unique_min_swaps": 20,
-          "lp_retirable_max": 0.9
-        }
+          "lp_retirable_max": 0.9,
+          "rapide": true
+        },
+        "surveillance_rapide": true,
+        "prix_chaine": true
       },
       "RCB3": {
         "label": "RCB3 - jumeau de RCB2 + contrôle de la liquidité : refus si, dans un pool v4 sans hook, 90 % ou plus de la liquidité appartient à des wallets ordinaires qui peuvent la retirer seuls (schéma des faux honeypots MECHA, UFP… : 1 position, 100 % retirée 45 à 74 min après)",
@@ -208,8 +211,11 @@
           "mort_min": 60,
           "retrait_ratio": 0.5,
           "sens_unique_min_swaps": 20,
-          "lp_retirable_max": 0.9
-        }
+          "lp_retirable_max": 0.9,
+          "rapide": true
+        },
+        "surveillance_rapide": true,
+        "prix_chaine": true
       },
       "RCB2": {
         "label": "RCB2 - jumeau protégé de RCB1 : mêmes réglages + filtre anti-rug (refus si le créateur a distribué le token à 6 adresses ou plus en lot, ou opérateur connu ; sur 203 trades Base passés : lot < 6 = +4 % en moyenne, lot >= 6 = -40 %) + test honeypot « swaps à sens unique »",
@@ -261,8 +267,11 @@
           "exiger_tests": true,
           "mort_min": 60,
           "retrait_ratio": 0.5,
-          "sens_unique_min_swaps": 20
-        }
+          "sens_unique_min_swaps": 20,
+          "rapide": true
+        },
+        "surveillance_rapide": true,
+        "prix_chaine": true
       },
       "RCB1": {
         "label": "RCB1 - Base, config validée par la recherche continue (01/11 : +8,9 % sur 79 trades, pire tranche +1,7 %, +15 % sur 96 trades de la période mise de côté) : signal large, repli 5-45 % en 15 min, stop -40 %, tout vendu au TP1 +40 %, sortie si pas +3 % en 5 min, 10 min max sans TP1",
@@ -302,7 +311,9 @@
         "sortie_rapide": {
           "minutes": 5,
           "gain_min_pct": 3
-        }
+        },
+        "surveillance_rapide": true,
+        "prix_chaine": true
       },
       "RC1": {
         "label": "RC1 - meilleure config de la recherche continue (29/10 00h) : Solana, signal vol 1 h >= 25 000 $ / liq >= 25 000 $ / 200 txns, repli 10-15 % sur 30 min, market cap >= 250 000 $, stop -15 %, tout vendu au TP1 +40 %, sortie si pas +10 % en 15 min, 30 min max sans TP1",
@@ -1757,7 +1768,10 @@
         "base": 150
       }
     },
-    "fast_rapide_seconds": 4
+    "fast_rapide_seconds": 4,
+    "fast_thread": {
+      "tick": 2
+    }
   },
   "security": {
     "enabled": true,
