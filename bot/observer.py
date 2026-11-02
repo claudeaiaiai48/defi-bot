@@ -13,6 +13,7 @@ import security
 import social
 import tgwatch
 import rugtools
+import refus
 try:
     import flux
 except Exception:      # module de mesure facultatif
@@ -53,6 +54,11 @@ def append(name, obj):
     with open(os.path.join(DATA, f"{name}-{day}.jsonl"), "a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
     if name == "paper":
+        if obj.get("type") in ("refus", "rejet sécurité"):
+            try:
+                refus.noter(obj, DATA, PUBLIC)       # journal permanent des refus + suivi de leur devenir
+            except Exception:
+                pass
         EV_LOG.append(obj)
         del EV_LOG[:-300]
         try:
