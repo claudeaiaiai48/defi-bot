@@ -67,11 +67,15 @@ def append(name, obj):
             pass
 
 
+_WP = threading.Lock()      # écriture publique depuis deux fils (boucle principale + surveillance rapide)
+
+
 def write_public(name, obj):
-    tmp = os.path.join(PUBLIC, name + ".tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, os.path.join(PUBLIC, name))
+    with _WP:
+        tmp = os.path.join(PUBLIC, name + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(obj, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, os.path.join(PUBLIC, name))
 
 
 def discover(chains):
@@ -345,7 +349,8 @@ def signaux_variantes(paper, chain, addr, p, row, cfg, events):
                              "-clanker" if addr.lower() in security.CLANKER else "-organique")
             if (sec.get("details") or {}).get("avertissement"):
                 strat += "-createurvendu"
-            vp.signal(r, strat, events)
+            with paper.lock:
+                vp.signal(r, strat, events)
         else:
             events.append({"type": "rejet sécurité", "key": f"{chain}:{addr}", "symbol": r["symbol"],
                            "raisons": sec["raisons"], "details": sec.get("details")})
@@ -371,37 +376,73 @@ def jup_prix(addrs):
     return out
 
 
-def fast_check(paper, rapide_only=False):
+def prix_chaine_snaps(snaps, addrs):
+    """Base : prix lu sur le pool v4 (module onchain) pour les adresses données -> {adresse: paire avec priceUsd on-chain}."""
+    out = {}
+    try:
+        import onchain
+    except Exception:
+        return out
+    for a in addrs:
+        p = snaps.get(a)
+        px = onchain.prix_chaine(p) if p else None
+        if px:
+            out[a] = {**p, "priceUsd": repr(px)}
+    return out
+
+
+def fast_check(paper, rapide_only=False, independant=False):
     """Contrôle rapide des positions OUVERTES uniquement (stops, TP, moonbag) entre deux grandes boucles.
-    Les entrées en attente (règle de la bougie) et la découverte restent au rythme normal."""
-    keys = [tuple(k.split(":", 1)) for k in (paper.rapide_keys() if rapide_only else paper.open_keys())]
+    Les entrées en attente (règle de la bougie) et la découverte restent au rythme normal.
+    independant=True : appelé par le fil de surveillance dédié, seulement pour les wallets "surveillance_rapide"."""
+    if independant:
+        keys = [tuple(k.split(":", 1)) for k in paper.surv_keys()]
+    else:
+        keys = [tuple(k.split(":", 1)) for k in (paper.rapide_keys() if rapide_only else paper.open_keys())]
     if not keys:
         return
     events = []
     for chain in sorted({c for c, _ in keys}):
         addrs = [a for c, a in keys if c == chain]
         snaps = snapshot(chain, addrs)
-        jup = {}
+        jup, alt = {}, {}
         if chain == "solana":
             try:
-                jup = (jup_prix(addrs) if rapide_only else comparer_prix(paper, addrs, snaps)) or {}
+                jup = (jup_prix(addrs) if (rapide_only or independant) else comparer_prix(paper, addrs, snaps)) or {}
             except Exception as e:
                 log(f"comparer_prix: {e}")
+        elif chain == "base":
+            alt = prix_chaine_snaps(snaps, addrs)
         for a in addrs:
             key = f"{chain}:{a}"
             if a in snaps:     # donnée absente : on ne compte pas « disparu »
-                if rapide_only:
-                    paper.dispatch(key, snaps[a], events, jup.get(a), rapide=True)
+                if independant:
+                    paper.surv_update(key, snaps[a], events, jup.get(a), alt.get(a))
+                elif rapide_only:
+                    paper.dispatch(key, snaps[a], events, jup.get(a), rapide=True, alt=alt.get(a))
                 else:
-                    paper.update_open(key, snaps[a], events, jup.get(a))
-    paper.risk_check(events)
+                    paper.update_open(key, snaps[a], events, jup.get(a), alt=alt.get(a))
+    if not independant:
+        paper.risk_check(events)
     for ev in events:
         ev["t"] = now().isoformat(timespec="seconds")
         append("paper", ev)
         log(f"PAPER {ev}")
-    if events or not rapide_only:
+    if events or not (rapide_only or independant):
         paper.save()
         paper.publish(write_public)
+
+
+def surveillance_independante(paper, tick):
+    """Fil dédié : contrôle des stops / TP / retraits des wallets "surveillance_rapide" toutes les `tick` secondes,
+    sans attendre la fin du travail de la boucle principale."""
+    while True:
+        t = time.time()
+        try:
+            fast_check(paper, independant=True)
+        except Exception as e:
+            log(f"surveillance: {e}")
+        time.sleep(max(0.3, tick - (time.time() - t)))
 
 
 def main():
@@ -428,6 +469,7 @@ def main():
         except Exception as e:
             log(f"flux: {e}")
     paper = None
+    surv = []
     while True:
         cfg = load_config()
         t0 = time.time()
@@ -438,6 +480,11 @@ def main():
         if pcfg.get("enabled") and paper is None:
             paper = MultiPaper(DATA, pcfg)
             log("paper trading activé")
+        if paper and pcfg.get("fast_thread") and not surv:
+            surv.append(threading.Thread(target=surveillance_independante,
+                                         args=(paper, float(pcfg["fast_thread"].get("tick", 2))), daemon=True))
+            surv[0].start()
+            log("surveillance rapide indépendante démarrée")
         if paper:
             paper.cfg = pcfg
         events = []
@@ -480,11 +527,14 @@ def main():
                 jupx = {}
                 if chain == "solana" and any(p.cfg.get("rapide") and p.cfg.get("prix_jupiter") for _, p in paper._all()):
                     jupx = jup_prix([a for (c, a) in paper.watched_keys() if c == chain])
+                alt = {}
+                if chain == "base":
+                    alt = prix_chaine_snaps(snaps_chain, [a for (c, a) in paper.surv_keys("prix_chaine") if c == "base"])
                 for (c, a) in paper.watched_keys():
                     if c != chain:
                         continue
                     key = f"{c}:{a}"
-                    paper.dispatch(key, snaps_chain.get(a), events, jupx.get(a))
+                    paper.dispatch(key, snaps_chain.get(a), events, jupx.get(a), alt=alt.get(a))
             for addr, p in snaps_chain.items():
                 if (chain, addr) not in tracked:
                     continue
