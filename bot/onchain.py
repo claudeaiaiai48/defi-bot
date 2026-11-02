@@ -355,3 +355,73 @@ def liquidite(pool_id, age_min):
 
 def a_liquidite(pid, age):
     return _async(("lp", pid), lambda: liquidite(pid, age), 600)
+
+
+# --- Lecture rapide (positions ouvertes des wallets "prix_chaine" / onchain.rapide) -----------------------------
+STATEVIEW = "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71"       # Uniswap v4 StateView (Base)
+_DEC, _INC = {}, {}
+
+
+def _decimales(token):
+    d = _DEC.get(token)
+    if d is None:
+        d = int(_rpc("eth_call", [{"to": token, "data": "0x313ce567"}, "latest"]), 16)
+        _DEC[token] = d
+    return d
+
+
+def prix_chaine(pair):
+    """Prix USD lu directement sur le pool v4 (StateView.getSlot0), sans attendre DexScreener. None si non applicable
+    (pool non v4, paire non cotée en ETH natif) ou si le RPC échoue. Le taux ETH/USD vient du ratio DexScreener."""
+    pid = (pair.get("pairAddress") or "") if pair else ""
+    if not (pid.startswith("0x") and len(pid) == 66):
+        return None
+    try:
+        if int((pair.get("quoteToken") or {}).get("address") or "x", 16) != 0:
+            return None                       # ETH natif = currency0 ; sinon l'ordre des monnaies est inconnu
+        nat, usd = float(pair.get("priceNative") or 0), float(pair.get("priceUsd") or 0)
+        if nat <= 0 or usd <= 0:
+            return None
+        sq = int(_rpc("eth_call", [{"to": STATEVIEW, "data": "0xc815641c" + pid[2:]}, "latest"])[2:66], 16)
+        if not sq:
+            return None
+        dec = _decimales(pair["baseToken"]["address"])
+        eth_par_token = (2 ** 192 / (sq * sq)) * 10 ** (dec - 18)
+        return eth_par_token * (usd / nat)
+    except Exception:
+        return None
+
+
+def etat_inc(pool_id):
+    """Comme etat() mais incrémental : la 1re lecture prend la fenêtre complète, les suivantes seulement les nouveaux
+    blocs (un seul eth_getLogs). Permet de voir un retrait de liquidité ou l'arrêt des swaps en 1 à 3 s."""
+    bn = int(_rpc("eth_blockNumber", []), 16)
+    s = _INC.get(pool_id)
+    if s is None:
+        s = {"bloc": bn - BLOCS - 1, "a": 0, "b": 0, "liq_max": 0, "dernier": None, "ajout": 0, "retrait": 0, "n": 0}
+    if bn > s["bloc"]:
+        logs = _rpc("eth_getLogs", [{"address": POOLMANAGER, "fromBlock": hex(s["bloc"] + 1), "toBlock": hex(bn),
+                                     "topics": [[SWAP, MODLIQ], pool_id]}], timeout=10)
+        for l in logs:
+            w = _mots(l["data"])
+            if l["topics"][0] == SWAP:
+                s0 = _signe(w[0])
+                s["a"], s["b"], s["n"] = s["a"] + (s0 > 0), s["b"] + (s0 < 0), s["n"] + 1
+                s["liq_max"] = max(s["liq_max"], int(w[3], 16))
+                s["dernier"] = max(s["dernier"] or 0, int(l["blockNumber"], 16))
+            else:
+                d = _signe(w[2])
+                if d > 0:
+                    s["ajout"] += d
+                else:
+                    s["retrait"] -= d
+        s["bloc"] = bn
+        _INC[pool_id] = s
+    net = max(0, s["retrait"] - s["ajout"])
+    return {"n": s["n"], "minorite": min(s["a"], s["b"]),
+            "dernier_swap_min": round((bn - s["dernier"]) * 2 / 60, 1) if s["dernier"] else round(BLOCS * 2 / 60, 1),
+            "retrait_ratio": round(net / s["liq_max"], 3) if s["liq_max"] else None}
+
+
+def a_etat_rapide(pid):
+    return _async(("etat_r", pid), lambda: etat_inc(pid), 1)
