@@ -163,6 +163,9 @@ def _base(token, cfg):
             if oc:
                 det["detenteurs"] = f"lus sur la chaîne ({oc['holders']} détenteurs)"
                 det["top10_hors_pool_pct"] = oc["top10_pct"]
+                det["top1_pct"] = oc.get("top1_pct")
+                if cfg.get("max_top1_pct") and (oc.get("top1_pct") or 0) >= cfg["max_top1_pct"]:
+                    reasons.append(f"un seul wallet détient {oc['top1_pct']:.1f} % (chaîne)")
                 if oc["top10_pct"] >= cfg["max_top10_pct"]:
                     reasons.append(f"top 10 = {oc['top10_pct']:.1f} % (chaîne)")
             else:
@@ -170,6 +173,11 @@ def _base(token, cfg):
                 det["top10_hors_pool_pct"] = None
         elif top10 >= cfg["max_top10_pct"]:
             reasons.append(f"top 10 = {top10:.1f} %")
+        if cfg.get("max_top1_pct") and holders:
+            top1 = 100 * max(float(h.get("percent") or 0) for h in holders)
+            det["top1_pct"] = round(top1, 1)
+            if top1 >= cfg["max_top1_pct"]:
+                reasons.append(f"un seul wallet détient {top1:.1f} %")
         det["clanker"] = token.lower() in CLANKER
         det["createur_detient"] = float(r.get("creator_percent") or 0) > 0
         if det["clanker"]:
