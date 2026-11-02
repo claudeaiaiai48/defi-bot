@@ -223,7 +223,7 @@ class Paper:
         return sum(self.cfg["reserves"].values())
 
     def watched_keys(self):
-        keys = (list(self.state["open"]) + list(self.state["pending"])
+        keys = (list(self.state["open"]) + list(self.state["pending"]) + list(self.state.get("achats_diff", {}))
                 + [k for k, g in self.state.setdefault("suivi", {}).items() if not g.get("long_done")])
         return [tuple(k.split(":", 1)) for k in keys]
 
@@ -282,6 +282,23 @@ class Paper:
         if pl and liq:
             size = min(size, liq * pl / 100)
         return round(size, 2)
+
+    def update_achat(self, key, pair, events):
+        """Exécute au prix actuel un ordre d'achat envoyé il y a au moins delai_achat_s secondes."""
+        st = self.state
+        a = st["achats_diff"][key]
+        if key in st["open"]:
+            st["achats_diff"].pop(key)
+            return
+        if time.time() - a["t"] < self.cfg.get("delai_achat_s", 0):
+            return
+        price = float((pair or {}).get("priceUsd") or 0)
+        if price <= 0:
+            if time.time() - a["t"] > 60:
+                st["achats_diff"].pop(key)         # plus de cotation : l'ordre est abandonné
+            return
+        st["achats_diff"].pop(key)
+        self._buy(key, a["p"], price, pair, events)
 
     def update_pending(self, key, pair, events):
         c, st = self.cfg, self.state
@@ -377,6 +394,10 @@ class Paper:
                                        "reason": ("aller-retour Jupiter impossible (erreur ou pas de route)" if pr is None
                                                   else f"aller-retour Jupiter {pr} % (max {sc.get('max_perte_pct', 12)} %)")})
                         return
+                if c.get("delai_achat_s"):
+                    # délai de transaction simulé : l'ordre d'achat part maintenant, il s'exécute au prix observé plus tard
+                    st.setdefault("achats_diff", {})[key] = {"t": time.time(), "p": p}
+                    return
                 self._buy(key, p, price, pair, events)
                 return
         if time.time() - p["t"] > c["entry_window_min"] * 60:
@@ -624,8 +645,15 @@ class Paper:
                        "impact_achat_pct": round((imp - 1) * 100, 2), "liquidite_usd": round(liq)})
 
     # ---------- sorties ----------
+    _rejeu = False
+
     def _sell(self, key, frac_of_initial, price, reason, events, all_=False, qty=None):
         pos = self.state["open"][key]
+        if self.cfg.get("delai_vente_s") and not self._rejeu:
+            # délai de transaction simulé : l'ordre part maintenant, il s'exécute au prix observé delai_vente_s plus tard
+            pos.setdefault("ventes_diff", []).append({"t": time.time(), "frac": frac_of_initial, "reason": reason,
+                                                       "all": all_, "qty": qty})
+            return
         if qty is None:
             qty = pos["qty"] if all_ else pos["qty0"] * frac_of_initial
         qty = min(pos["qty"], qty)
@@ -639,7 +667,25 @@ class Paper:
         events.append({"type": "vente", "key": key, "symbol": pos["symbol"], "price": price,
                        "usd": round(usd, 2), "reason": reason})
 
+    def _rejouer(self, key, price, events):
+        """Exécute au prix actuel les ordres de vente envoyés il y a au moins delai_vente_s secondes."""
+        pos, d = self.state["open"][key], self.cfg.get("delai_vente_s")
+        self._rejeu = True
+        try:
+            ordres = pos.pop("ventes_diff", [])
+            for v in ordres:
+                self._sell(key, v["frac"], price, f"{v['reason']} (exécutée +{d} s)", events, all_=v["all"], qty=v["qty"])
+            cl = pos.pop("cloture_diff", None)
+            if cl or pos["qty"] <= pos["qty0"] * 1e-9:
+                tp1 = bool(ordres) and str(ordres[0]["reason"]).startswith("TP1")
+                self._close(key, cl or ("tout vendu au TP1" if tp1 else "tout vendu"), events)
+        finally:
+            self._rejeu = False
+
     def _close(self, key, reason, events):
+        if self.cfg.get("delai_vente_s") and not self._rejeu and self.state["open"][key].get("ventes_diff"):
+            self.state["open"][key]["cloture_diff"] = reason      # la clôture attend l'exécution des ordres de vente
+            return
         pos = self.state["open"].pop(key)
         pnl = pos["proceeds_usd"] - pos["cost_usd"]
         trade = {k: pos.get(k) for k in ("chain", "token", "symbol", "strategy", "url",
@@ -674,6 +720,11 @@ class Paper:
         price = float(pair.get("priceUsd") or 0)
         if price <= 0:
             return
+        d = c.get("delai_vente_s")
+        if d and pos.get("ventes_diff"):
+            if time.time() - pos["ventes_diff"][0]["t"] >= d:
+                self._rejouer(key, price, events)
+            return              # ordre de vente en cours d'exécution : rien d'autre à décider
         oc = c.get("onchain")          # wallet de test : sortie sur pool mort (plus de swap) ou retrait de liquidité, vu on-chain
         if oc and pos.get("chain") == "base" and pos["qty"] > 0:
             if oc.get("test_transfert") and self._oc_transfert(pair) is False:
