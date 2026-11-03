@@ -1246,7 +1246,9 @@
         },
         "filtre_rug": {
           "lot_min": 6
-        }
+        },
+        "delai_achat_s": 4,
+        "delai_vente_s": 4
       },
       "RUG2": {
         "label": "RUG2 - clone de E, filtre rug plus strict (lot >= 3 adresses ou operateur connu)",
@@ -1282,7 +1284,9 @@
         },
         "filtre_rug": {
           "lot_min": 3
-        }
+        },
+        "delai_achat_s": 4,
+        "delai_vente_s": 4
       },
       "SN1": {
         "label": "SN1 - Solana : scalp (stop -10 %, TP1 +15 % vendu 70 %, TP2 +40 %, sortie 30 min)",
@@ -1604,7 +1608,9 @@
         },
         "filtre_rug": {
           "lot_min": 6
-        }
+        },
+        "delai_achat_s": 4,
+        "delai_vente_s": 4
       },
       "RUG4": {
         "label": "RUG4 - clone de E2 avec filtre rug (lot >= 6 adresses ou operateur connu) : sortie anticipee sur faiblesse",
@@ -1645,7 +1651,9 @@
         },
         "filtre_rug": {
           "lot_min": 6
-        }
+        },
+        "delai_achat_s": 4,
+        "delai_vente_s": 4
       },
       "RUG5": {
         "label": "RUG5 - clone de E3 avec filtre rug (lot >= 6 adresses ou operateur connu) : stops simules en ordre declencheur",
@@ -1684,7 +1692,9 @@
         },
         "filtre_rug": {
           "lot_min": 6
-        }
+        },
+        "delai_achat_s": 4,
+        "delai_vente_s": 4
       },
       "RUG6": {
         "label": "RUG6 - clone de X avec filtre rug (lot >= 6 adresses ou operateur connu) : controle rapide 4 s",
@@ -1721,7 +1731,9 @@
         "rapide": true,
         "filtre_rug": {
           "lot_min": 6
-        }
+        },
+        "delai_achat_s": 4,
+        "delai_vente_s": 4
       },
       "RUG7": {
         "label": "RUG7 - clone de H avec filtre rug (lot >= 6 adresses ou operateur connu) : securite stricte top10 25 %",
@@ -1757,7 +1769,9 @@
         },
         "filtre_rug": {
           "lot_min": 6
-        }
+        },
+        "delai_achat_s": 4,
+        "delai_vente_s": 4
       }
     },
     "injections": [
