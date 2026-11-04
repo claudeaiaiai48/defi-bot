@@ -100,6 +100,9 @@ def _verdict(f):
     if _age_min(f) < 120 or len(ms) < 3:
         return "trop tôt"
     der = ms[max(ms, key=lambda k: int(k))]
+    if (der.get("vol_h1") == 0 and (ms["0"].get("vol_h1") or 0) > 0 and len(ms) >= 3
+            and int(max(ms, key=lambda k: int(k))) >= 60):
+        return "mort après refus : volume à zéro (liquidité retirée ou token abandonné, filtre probablement juste)"
     l0, p0 = ms["0"].get("liq") or 0, ms["0"]["prix"]
     if der.get("absent") or (l0 and (der.get("liq") or 0) < 0.2 * l0) or der.get("prix", 0) < 0.2 * p0:
         return "arnaque ou effondrement confirmé (filtre juste)"
